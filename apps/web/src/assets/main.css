@@ -1,0 +1,65 @@
+:root {
+  --bnb-green: #26b460;
+  --bnb-green-hover: #1f9750;
+  --bnb-green-light: #ecfdf3;
+  --bnb-purple: #5b21b6;
+  --bnb-purple-hover: #4c1d95;
+  --bnb-purple-light: #f3e8ff;
+  --bnb-purple-dark: #2e1065;
+  --bnb-dark: #0f172a;
+  --bnb-gray-50: #f8fafc;
+  --bnb-gray-100: #f1f5f9;
+  --bnb-gray-200: #e2e8f0;
+  --bnb-gray-600: #475569;
+  --bnb-gray-800: #1e293b;
+  --bnb-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--bnb-font);
+  background-color: var(--bnb-gray-50);
+  color: var(--bnb-gray-800);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Clases utilitarias de marca BNB */
+.bg-bnb-green {
+  background-color: var(--bnb-green);
+}
+
+.text-bnb-green {
+  color: var(--bnb-green);
+}
+
+.bg-bnb-purple {
+  background-color: var(--bnb-purple);
+}
+
+.text-bnb-purple {
+  color: var(--bnb-purple);
+}
+
+.border-bnb-green {
+  border-color: var(--bnb-green);
+}
+
+.border-bnb-purple {
+  border-color: var(--bnb-purple);
+}

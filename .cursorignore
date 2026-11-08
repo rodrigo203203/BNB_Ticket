@@ -1,0 +1,60 @@
+# Dependencias y paquetes externos
+node_modules/
+**/node_modules/
+.pnpm-store/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+bun.lockb
+
+# Artefactos de compilación
+dist/
+**/dist/
+build/
+**/build/
+*.tsbuildinfo
+*.map
+
+# Caché y temporales de herramientas
+.cache/
+.vite/
+.turbo/
+.parcel-cache/
+
+# Pruebas y reportes de cobertura
+coverage/
+**/coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Archivos de registro y logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+.system_generated/
+
+# Almacenamiento local, uploads y volcados
+storage/uploads/*
+storage/temp/*
+storage/cache/*
+*.dump
+*.sql
+*.tar
+*.gz
+*.zip
+
+# Variables de entorno y secretos privados
+.env
+.env.local
+.env.production
+.env.*.local
+!.env.example
+
+# IDEs y sistemas operativos
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+

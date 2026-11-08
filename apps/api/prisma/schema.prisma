@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SOLICITANTE
+  ANALISTA
+  COORDINADOR
+  ADMINISTRADOR
+}
+
+enum RequestStatus {
+  REGISTRADA
+  EN_ANALISIS
+  EN_REVISION_COORDINACION
+  APROBADA
+  RECHAZADA
+  CANCELADA
+}
+
+enum RequestPriority {
+  BAJA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+enum RequestCategory {
+  EXTRACCION_DATOS
+  REPORTES_BI
+  MODELOS_ML
+  CALIDAD_DATOS
+  GOBIERNO_DATOS
+  ACCESO_BD
+}
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  ACCOUNT_LOCKED
+  LOGOUT
+  SESSION_REVOKED
+  REQUEST_CREATED
+  REQUEST_STATUS_UPDATED
+  USER_CREATED
+  USER_UPDATED
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  fullName       String
+  jobTitle       String?
+  avatarPath     String?
+  passwordHash   String
+  role           Role      @default(SOLICITANTE)
+  area           String    @default("Negocio")
+  isActive       Boolean   @default(true)
+  isLocked       Boolean   @default(false)
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  sessions             Session[]
+  requestedSolicitudes Solicitud[]        @relation("RequestedSolicitudes")
+  assignedSolicitudes  Solicitud[]        @relation("AssignedSolicitudes")
+  solicitudHistories   SolicitudHistory[]
+  auditLogs            AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Session {
+  id             String   @id @default(uuid())
+  userId         String
+  tokenHash      String   @unique
+  ipAddress      String?
+  userAgent      String?
+  deviceInfo     String?
+  isValid        Boolean  @default(true)
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  lastActivityAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Solicitud {
+  id                String          @id @default(uuid())
+  code              String          @unique
+  title             String
+  description       String
+  category          RequestCategory
+  priority          RequestPriority @default(MEDIA)
+  status            RequestStatus   @default(REGISTRADA)
+  requesterId       String
+  assignedAnalystId String?
+  requesterArea     String
+  justification     String?
+  estimatedHours    Int?
+  closedAt          DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  requester       User               @relation("RequestedSolicitudes", fields: [requesterId], references: [id])
+  assignedAnalyst User?              @relation("AssignedSolicitudes", fields: [assignedAnalystId], references: [id])
+  histories       SolicitudHistory[]
+
+  @@index([code])
+  @@index([status])
+  @@index([requesterId])
+  @@index([assignedAnalystId])
+  @@index([createdAt])
+  @@map("solicitudes")
+}
+
+model SolicitudHistory {
+  id             String         @id @default(uuid())
+  solicitudId    String
+  authorId       String
+  previousStatus RequestStatus?
+  newStatus      RequestStatus
+  comment        String
+  createdAt      DateTime       @default(now())
+
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id])
+
+  @@index([solicitudId])
+  @@index([authorId])
+  @@map("solicitud_histories")
+}
+
+model AuditLog {
+  id        String      @id @default(uuid())
+  userId    String?
+  userEmail String
+  action    AuditAction
+  details   String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
