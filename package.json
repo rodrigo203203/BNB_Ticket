@@ -1,0 +1,32 @@
+{
+  "name": "bnb-gerencia-datos-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plataforma BNB de Gestión de Solicitudes - Gerencia de Datos (Fase 1)",
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @bnb/api --filter @bnb/web dev",
+    "dev:api": "pnpm --filter @bnb/api dev",
+    "dev:web": "pnpm --filter @bnb/web dev",
+    "build": "pnpm --filter @bnb/shared build && pnpm --filter @bnb/api build && pnpm --filter @bnb/web build",
+    "build:shared": "pnpm --filter @bnb/shared build",
+    "build:api": "pnpm --filter @bnb/api build",
+    "build:web": "pnpm --filter @bnb/web build",
+    "typecheck": "pnpm --recursive run typecheck",
+    "lint": "eslint . --max-warnings=0",
+    "test": "pnpm --recursive run test",
+    "test:coverage": "pnpm --recursive run test:coverage",
+    "prisma:validate": "pnpm --filter @bnb/api prisma:validate",
+    "prisma:generate": "pnpm --filter @bnb/api prisma:generate",
+    "seed": "pnpm --filter @bnb/api db:seed",
+    "verify:env": "node scripts/verify-env.mjs"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.72.1",
+    "@typescript-eslint/parser": "^8.72.1",
+    "eslint": "^10.14.0",
+    "eslint-plugin-vue": "^10.12.0",
+    "typescript": "^5.7.3",
+    "vue-eslint-parser": "^10.4.2"
+  }
+}

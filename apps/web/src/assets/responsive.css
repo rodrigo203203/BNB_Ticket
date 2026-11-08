@@ -1,0 +1,116 @@
+/* Evita scroll horizontal a nivel de página */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Tablas: ocultar columnas secundarias en móvil */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .table-container,
+  .table-card,
+  .card-table {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .data-table {
+    table-layout: fixed;
+    font-size: 0.78rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 0.55rem 0.4rem;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .view-header,
+  .filters-bar,
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .search-box,
+  .search-input,
+  .filter-select {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .btn-export,
+  .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Tablas en formato tarjeta (sin scroll horizontal) */
+@media (max-width: 768px) {
+  .data-table--cards thead {
+    display: none;
+  }
+
+  .data-table--cards tbody tr {
+    display: block;
+    margin-bottom: 0.85rem;
+    border: 1px solid var(--bnb-gray-200);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+  }
+
+  .data-table--cards tbody tr.clickable-row {
+    cursor: pointer;
+  }
+
+  .data-table--cards td {
+    display: grid;
+    grid-template-columns: minmax(96px, 38%) 1fr;
+    align-items: start;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .data-table--cards td:last-child {
+    border-bottom: none;
+  }
+
+  .data-table--cards td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 0.72rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .data-table--cards td.center-cell,
+  .data-table--cards td.empty-cell {
+    display: block;
+    text-align: center;
+  }
+
+  .data-table--cards td.center-cell::before,
+  .data-table--cards td.empty-cell::before {
+    content: none;
+  }
+
+  .data-table--cards .action-buttons {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

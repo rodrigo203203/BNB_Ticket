@@ -1,0 +1,40 @@
+{
+  "name": "@bnb/web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frontend SPA Vue 3 para la Plataforma BNB de Gestión de Solicitudes",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint . --max-warnings=0"
+  },
+  "dependencies": {
+    "@bnb/shared": "workspace:*",
+    "@fortawesome/fontawesome-svg-core": "^6.6.0",
+    "@fortawesome/free-solid-svg-icons": "^6.6.0",
+    "@fortawesome/vue-fontawesome": "^3.0.8",
+    "@primevue/themes": "^4.2.3",
+    "axios": "^1.7.7",
+    "pinia": "^2.2.6",
+    "primevue": "^4.2.3",
+    "vue": "^3.5.13",
+    "vue-draggable-plus": "^0.6.0",
+    "vue-router": "^4.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.8.7",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "@vue/test-utils": "^2.4.6",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4",
+    "vue-tsc": "^2.1.10"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-darwin-x64": "^4.68.0"
+  }
+}
