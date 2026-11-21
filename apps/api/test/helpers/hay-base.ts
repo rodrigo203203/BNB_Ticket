@@ -22,6 +22,9 @@ export function emailLoginIntegracion(): string {
  * Contraseña para login en integración:
  * prioriza `DEMO_SEED_PASSWORD` (tras `seed:demo`), luego `ADMIN_PASSWORD` (tras `seed:admin`).
  */
+export const MENSAJE_FALTA_CONTRASENA_INTEGRACION =
+  'Defina DEMO_SEED_PASSWORD (tras npm run seed:demo) o ADMIN_PASSWORD (tras npm run seed:admin) en el .env raíz. Véase docs/pruebas-integracion.md';
+
 export function contrasenaLoginIntegracion(): string | undefined {
   const ini = entornoInicial();
   const demo = ini.DEMO_SEED_PASSWORD?.trim();

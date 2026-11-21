@@ -9,12 +9,12 @@ import { TransformInterceptor } from '../src/common/interceptors/transform.inter
 
 import { contrasenaLoginIntegracion, hayBaseDeDatosParaTests } from './helpers/hay-base';
 
-const runIntegration = hayBaseDeDatosParaTests();
+const password = contrasenaLoginIntegracion();
+const runIntegration = hayBaseDeDatosParaTests() && Boolean(password);
 
 (runIntegration ? describe : describe.skip)('GET /equipo/carga (HTTP)', () => {
   let app: INestApplication;
   let baseUrl: string;
-  const password = contrasenaLoginIntegracion() || 'DemoBNB2026!';
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -45,7 +45,7 @@ const runIntegration = hayBaseDeDatosParaTests();
     const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password: password! }),
     });
     expect(res.status).toBe(200);
     const setCookie = res.headers.getSetCookie?.() ?? [];

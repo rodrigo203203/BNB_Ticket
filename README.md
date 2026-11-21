@@ -71,7 +71,9 @@ Plataforma corporativa bancaria para la centralización, asignación, trazabilid
 
 ## 👥 Cuentas de Prueba (Seed Sintético)
 
-En **desarrollo**, `npm run seed:demo` crea datos de prueba (contraseña vía `DEMO_SEED_PASSWORD` o generada en consola). En **producción**, use `npm run seed:admin` una sola vez (variables `ADMIN_EMAIL` / `ADMIN_PASSWORD`).
+En **desarrollo**, `npm run seed:demo` crea datos de prueba: defina `DEMO_SEED_PASSWORD` en `.env` o consulte la clave con `SEED_MOSTRAR_CONTRASENAS=1 npm run seed:demo` / `npm run seed:demo -- --mostrar-contrasenas` (por defecto no se imprime en consola). En **producción**, use `npm run seed:admin` una sola vez (variables `ADMIN_EMAIL` / `ADMIN_PASSWORD`; mismo criterio para mostrar contraseña generada).
+
+Scripts Bash (`build-package.sh`, `scripts/postgres/*`) cargan `.env` con `scripts/lib/cargar-env.sh` (sin `source`; seguro con espacios en valores). Pruebas: `npm run test:scripts`.
 
 | Rol | Correo | Nombre | Cargo (seed) | Área |
 | :--- | :--- | :--- | :--- | :--- |

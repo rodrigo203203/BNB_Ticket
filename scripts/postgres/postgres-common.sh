@@ -5,14 +5,11 @@ set -euo pipefail
 bnb_postgres_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 bnb_repo_root="$(cd "${bnb_postgres_script_dir}/../.." && pwd)"
 
+# shellcheck source=../lib/cargar-env.sh
+source "${bnb_postgres_script_dir}/../lib/cargar-env.sh"
+
 bnb_cargar_dotenv_raiz() {
-  local env_file="${bnb_repo_root}/.env"
-  if [[ -f "$env_file" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "$env_file"
-    set +a
-  fi
+  bnb_cargar_dotenv_monorepo "$bnb_repo_root"
 }
 
 bnb_win_path() {

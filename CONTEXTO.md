@@ -79,6 +79,7 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-21 | Kanban: `overflow-x: auto` en tablero (columnas con `min-width` en desktop). |
 | 2026-11-21 | Jest integración: snapshot tras `cargar-entorno`; `npm run test:integration`; `seed:demo` sin imprimir claves por defecto. |
 | 2026-11-21 | Vite dev/preview `host: 127.0.0.1`; paquete offline exige binarios win32 (verificador bash). |
+| 2026-11-21 | Bash: `scripts/lib/cargar-env.sh` sustituye `source .env` (valores con espacios, sin ejecutar comandos); `npm run test:scripts`; preflight `test:integration`. |
 | 2026-11-20 | Agentes Cursor: modelo Composer. |
 | 2026-11-21 | **fecha requerida** obligatoria al crear solicitud; debe ser día calendario **estrictamente posterior a hoy** en zona `America/La_Paz` (no fin de día UTC). Utilidad compartida `esFechaRequeridaPosteriorAHoy` en `@bnb/shared`. |
 | 2026-11-21 | UI T6: `NuevaSolicitudView` con PrimeVue DatePicker, campos requeridos y placeholder adjuntos (T7). Detalle: tarjeta “Fechas del requerimiento” y PATCH fecha entrega según RBAC. Ruta `/solicitudes/nueva` para cualquier rol autenticado. |
@@ -96,7 +97,7 @@ rules/             Reglas de exclusión de contexto para agentes
 | Funcionalidad core | Login, solicitudes (formulario, adjuntos, fechas), Kanban, dashboard básico, admin usuarios, RBAC |
 | BD | Prisma Migrate — migración inicial + campos solicitud/adjuntos/`must_change_password` |
 | Despliegue | Documentado para Windows + IIS; credenciales en docs corregidas en `chore/contexto` |
-| Offline / npm | PR `fix/env-first` (#25) — `.ps1` + `.sh`, engines Prisma windows en paquete, docs/instalacion-offline.md |
+| Offline / npm | PR `fix/env-first` (#25) — cargador `.env` seguro en Bash, `.ps1` + `.sh`, `npm run test:scripts`, preflight integración |
 | Postgres | Modo **portable** (zip) o **service** (instalador); ver [docs/postgres.md](./docs/postgres.md) |
 | Seed producción | `seed:admin` idempotente; `seed:demo` solo desarrollo (sobrescribe datos demo, no usar en prod) |
 | Release v2 | Rama `release/v2` integra fases 1–3 + postgres dual + QA diseño |

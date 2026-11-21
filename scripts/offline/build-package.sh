@@ -17,12 +17,9 @@ command -v node >/dev/null || { echo "Falta node en PATH." >&2; exit 1; }
 echo "Node: $(node -v)"
 
 cd "$REPO_ROOT"
-if [[ -f "${REPO_ROOT}/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "${REPO_ROOT}/.env"
-  set +a
-fi
+# shellcheck source=../lib/cargar-env.sh
+source "${SCRIPT_DIR}/../lib/cargar-env.sh"
+bnb_cargar_dotenv_monorepo "$REPO_ROOT"
 
 [[ -f package-lock.json ]] || { echo "Falta package-lock.json." >&2; exit 1; }
 
@@ -54,6 +51,7 @@ PATHS=(
   packages/shared/package.json
   packages/shared/dist
   .env.example
+  scripts/lib
   scripts/offline
   scripts/postgres
   scripts/generar-secretos.mjs

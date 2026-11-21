@@ -14,6 +14,7 @@ import {
   contrasenaLoginIntegracion,
   emailLoginIntegracion,
   hayBaseDeDatosParaTests,
+  MENSAJE_FALTA_CONTRASENA_INTEGRACION,
   urlBaseDeDatosInicial,
 } from './helpers/hay-base';
 
@@ -122,9 +123,7 @@ describe('ConfigService claves MAYÚSCULAS sin export previo', () => {
   it('login admin responde 200 y cookie de sesión', async () => {
     const password = contrasenaLoginIntegracion();
     if (!password) {
-      throw new Error(
-        'Falta DEMO_SEED_PASSWORD o ADMIN_PASSWORD en .env (véase docs/pruebas-integracion.md y npm run test:integration).',
-      );
+      throw new Error(MENSAJE_FALTA_CONTRASENA_INTEGRACION);
     }
     const email = emailLoginIntegracion();
     const res = await request(app.getHttpServer())

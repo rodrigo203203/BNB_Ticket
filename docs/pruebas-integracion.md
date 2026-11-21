@@ -12,6 +12,16 @@ env -u DATABASE_URL npm test --workspace=@bnb/api
 
 → las suites de integración quedan **omitidas** (comportamiento esperado en CI sin BD).
 
+## Scripts Bash y `.env`
+
+Los scripts `build-package.sh` y `scripts/postgres/*.sh` leen `.env` con `scripts/lib/cargar-env.sh` (parser línea a línea, sin `source`/`eval`). Misma precedencia que TypeScript: `.env` en la raíz y luego `apps/api/.env`. Evita fallos en Git Bash cuando valores como `ADMIN_FULL_NAME="Administrador del Sistema"` no van entre comillas.
+
+Prueba del cargador y del verificador offline:
+
+```bash
+npm run test:scripts
+```
+
 ## Ejecutar integración en local
 
 1. Defina `DATABASE_URL` en `.env` raíz (y secretos JWT si aplica).
@@ -26,7 +36,7 @@ Atajo que prepara schema y datos demo y lanza las suites de integración de la A
 npm run test:integration
 ```
 
-Equivale a `prisma:migrate:deploy` + `seed:demo` + Jest filtrando integración. **No** imprime contraseñas por defecto; para verlas en consola al sembrar: `SEED_MOSTRAR_CONTRASENAS=1 npm run seed:demo` o `npm run seed:demo -- --mostrar-contrasenas`.
+Equivale a comprobar `DATABASE_URL` y `DEMO_SEED_PASSWORD`/`ADMIN_PASSWORD` (`scripts/test-integration-preflight.sh`), `prisma:migrate:deploy`, `seed:demo` y Jest filtrando integración. Si falta contraseña, el preflight termina con un mensaje claro (no un 401 opaco). **No** imprime contraseñas por defecto; para verlas en consola al sembrar: `SEED_MOSTRAR_CONTRASENAS=1 npm run seed:demo` o `npm run seed:demo -- --mostrar-contrasenas`.
 
 ## Login en auth-login.env.integration
 
