@@ -412,7 +412,9 @@ onMounted(async () => {
 .icon-green { color: var(--bnb-green); }
 .icon-purple { color: var(--bnb-purple); }
 .icon-red { color: #ef4444; }
+.icon-muted { color: #94a3b8; }
 
+.text-muted { color: #64748b; }
 .text-bnb-green { color: var(--bnb-green); }
 .text-amber { color: #d97706; }
 .text-purple { color: var(--bnb-purple); }

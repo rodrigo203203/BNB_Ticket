@@ -14,6 +14,7 @@ import {
   esFechaRequeridaPosteriorAHoy,
   AuditAction,
   SolicitudItem,
+  SolicitudGanttItem,
   UserSummary,
 } from '@bnb/shared';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
@@ -370,6 +371,42 @@ export class SolicitudesService {
     });
 
     return this.findOne(id, user);
+  }
+
+  /** Datos para diagrama Gantt (boceto 03); solicitante sin acceso. */
+  async findForGantt(user: UserSummary): Promise<SolicitudGanttItem[]> {
+    if (user.role === Role.SOLICITANTE) {
+      throw new ForbiddenException('El diagrama Gantt no está disponible para solicitantes');
+    }
+
+    const where: { assignedAnalystId?: string } = {};
+    if (user.role === Role.ANALISTA) {
+      where.assignedAnalystId = user.id;
+    }
+
+    const rows = await this.prisma.solicitud.findMany({
+      where: {
+        ...where,
+        status: {
+          notIn: [RequestStatus.CANCELADA],
+        },
+      },
+      include: { assignedAnalyst: true },
+      orderBy: [{ fechaRequerida: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    return rows.map((r: (typeof rows)[number]) => ({
+      id: r.id,
+      code: r.code,
+      title: r.title,
+      status: r.status as RequestStatus,
+      priority: r.priority as RequestPriority,
+      assignedAnalystName: r.assignedAnalyst?.fullName ?? null,
+      fechaRequerida: r.fechaRequerida ? r.fechaRequerida.toISOString() : null,
+      fechaEntrega: r.fechaEntrega ? r.fechaEntrega.toISOString() : null,
+      createdAt: r.createdAt.toISOString(),
+      sinFechaEntrega: !r.fechaEntrega,
+    }));
   }
 
   private mapToItem(raw: any): SolicitudItem {
