@@ -21,12 +21,12 @@ Este documento detalla las políticas y procedimientos técnicos para la protecc
 ### Respaldo en Formato Personalizado Comprimido (Recomendado):
 ```bash
 # Formato binario con compresión nativa
-pg_dump -h localhost -p 5432 -U rodrigo203 -F c -b -v -f "bnb_tickets_dev_$(date +%Y%m%d_%H%M%S).dump" bnb_tickets_dev
+pg_dump -h localhost -p 5432 -U <PG_USER> -F c -b -v -f "bnb_tickets_dev_$(date +%Y%m%d_%H%M%S).dump" bnb_tickets_dev
 ```
 
 ### Respaldo en Formato SQL Plano (Texto Legible):
 ```bash
-pg_dump -h localhost -p 5432 -U rodrigo203 -F p -v -f "bnb_tickets_dev_backup.sql" bnb_tickets_dev
+pg_dump -h localhost -p 5432 -U <PG_USER> -F p -v -f "bnb_tickets_dev_backup.sql" bnb_tickets_dev
 ```
 
 ---
@@ -38,7 +38,9 @@ Guardar como `D:\Aplicaciones\Scripts\Backup-BNBTickets.ps1` y programar en el *
 ```powershell
 # Parámetros de configuración
 $DbName = "bnb_tickets_dev"
-$DbUser = "rodrigo203"
+# Usuario de PostgreSQL: definir en .env o como variable de entorno (no hardcodear en el repo)
+$DbUser = $env:PGUSER
+if (-not $DbUser) { $DbUser = "<PG_USER>" }
 $BackupDir = "D:\Backups\BNB_Tickets"
 $DateStamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $BackupFile = "$BackupDir\${DbName}_${DateStamp}.dump"
@@ -50,7 +52,10 @@ if (-not (Test-Path $BackupDir)) {
 }
 
 # Ejecutar el respaldo
-$env:PGPASSWORD = "XboxOne"
+# Contraseña: exportar PGPASSWORD en el entorno del servidor (equivalente a <PG_PASSWORD> en docs)
+if (-not $env:PGPASSWORD) {
+    Write-Warning "Defina la variable PGPASSWORD antes de ejecutar el respaldo."
+}
 & $PgDumpPath -h localhost -p 5432 -U $DbUser -F c -b -f $BackupFile $DbName
 
 if ($LASTEXITCODE -eq 0) {
@@ -70,15 +75,15 @@ Get-ChildItem -Path $BackupDir -Filter "*.dump" | Where-Object { $_.LastWriteTim
 ### Restauración desde Formato Personalizado (`pg_restore`):
 ```bash
 # 1. Crear base de datos limpia si es necesario
-psql -h localhost -U rodrigo203 -d postgres -c "CREATE DATABASE bnb_tickets_dev;"
+psql -h localhost -U <PG_USER> -d postgres -c "CREATE DATABASE bnb_tickets_dev;"
 
 # 2. Restaurar contenido completo
-pg_restore -h localhost -p 5432 -U rodrigo203 -d bnb_tickets_dev -v --clean --if-exists "bnb_tickets_dev_backup.dump"
+pg_restore -h localhost -p 5432 -U <PG_USER> -d bnb_tickets_dev -v --clean --if-exists "bnb_tickets_dev_backup.dump"
 ```
 
 ### Restauración desde Archivo SQL:
 ```bash
-psql -h localhost -U rodrigo203 -d bnb_tickets_dev -f "bnb_tickets_dev_backup.sql"
+psql -h localhost -U <PG_USER> -d bnb_tickets_dev -f "bnb_tickets_dev_backup.sql"
 ```
 
 ---
