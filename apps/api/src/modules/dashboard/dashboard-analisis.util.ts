@@ -131,7 +131,10 @@ function metricasEnVentana(
   let conFecha = 0;
 
   for (const s of cierres) {
-    const fin = s.fechaEntrega ?? s.closedAt!;
+    const fin =
+      s.fechaEntrega && s.fechaEntrega.getTime() >= s.createdAt.getTime()
+        ? s.fechaEntrega
+        : s.closedAt!;
     const dias = (fin.getTime() - s.createdAt.getTime()) / MS_DIA;
     if (dias >= 0) {
       sumaDias += dias;

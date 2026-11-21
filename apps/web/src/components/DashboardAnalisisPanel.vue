@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import Chart from 'primevue/chart';
 import { apiClient } from '../api/client';
 import {
@@ -44,6 +44,9 @@ const centerTextPlugin = {
     const texto = chart.config.options?.plugins?.centerText?.text;
     if (!texto) return;
     const { ctx, chartArea } = chart;
+    if (!chartArea || chartArea.right <= chartArea.left || chartArea.bottom <= chartArea.top) {
+      return;
+    }
     const { top, bottom, left, right } = chartArea;
     ctx.save();
     ctx.font = 'bold 1.35rem "Segoe UI", system-ui, sans-serif';
@@ -97,6 +100,8 @@ async function cargar() {
     analisis.value = unwrapPayload<DashboardAnalisisStats>(
       res as DashboardAnalisisStats | { data: DashboardAnalisisStats },
     );
+    await nextTick();
+    chartRenderKey.value += 1;
   } catch (err: unknown) {
     const e = err as {
       response?: { data?: { error?: { message?: string | string[] }; message?: string } };
@@ -117,28 +122,11 @@ async function cargar() {
 
 const omitirRecargaAuto = ref(false);
 
-const chartsGridRef = ref<HTMLElement | null>(null);
-let gridResizeObserver: ResizeObserver | null = null;
+/** Fuerza remount de Chart.js tras datos (evita canvas en blanco tras layout). */
+const chartRenderKey = ref(0);
 
 onMounted(() => {
   void cargar();
-  if (typeof ResizeObserver !== 'undefined') {
-    gridResizeObserver = new ResizeObserver(() => {
-      window.dispatchEvent(new Event('resize'));
-    });
-    watch(
-      chartsGridRef,
-      (el) => {
-        gridResizeObserver?.disconnect();
-        if (el) gridResizeObserver?.observe(el);
-      },
-      { flush: 'post', immediate: true },
-    );
-  }
-});
-
-onBeforeUnmount(() => {
-  gridResizeObserver?.disconnect();
 });
 
 watch([periodo, filtroArea, fechaDesde, fechaHasta], () => {
@@ -548,11 +536,16 @@ const tarjetasKpi = computed(() => {
         </div>
       </div>
 
-      <div ref="chartsGridRef" class="charts-grid">
+      <div class="charts-grid">
         <div v-if="chartEstados" class="chart-card">
           <h3>Distribución por estado</h3>
           <div class="chart-box">
-            <Chart type="doughnut" :data="chartEstados" :options="opcionesDoughnutBase" />
+            <Chart
+              :key="'estados-' + chartRenderKey"
+              type="doughnut"
+              :data="chartEstados"
+              :options="opcionesDoughnutBase"
+            />
           </div>
         </div>
 
@@ -560,7 +553,12 @@ const tarjetasKpi = computed(() => {
           <h3>Solicitudes por área solicitante</h3>
           <p class="chart-hint">Haga clic en una barra para filtrar por área.</p>
           <div class="chart-box">
-            <Chart type="bar" :data="chartAreas" :options="opcionesAreas" />
+            <Chart
+              :key="'areas-' + chartRenderKey"
+              type="bar"
+              :data="chartAreas"
+              :options="opcionesAreas"
+            />
           </div>
         </div>
 
@@ -569,6 +567,7 @@ const tarjetasKpi = computed(() => {
           <div v-if="entregaPlazoVacia" class="chart-empty">Sin entregas en el período</div>
           <div v-else-if="chartEntregaPlazo" class="chart-box chart-box-doughnut">
             <Chart
+              :key="'entrega-' + chartRenderKey"
               type="doughnut"
               :data="chartEntregaPlazo"
               :options="opcionesEntregaPlazo"
@@ -580,21 +579,36 @@ const tarjetasKpi = computed(() => {
         <div v-if="chartTiempoRespuesta" class="chart-card">
           <h3>Tiempo de respuesta (tendencia mensual)</h3>
           <div class="chart-box chart-box-tall">
-            <Chart type="line" :data="chartTiempoRespuesta" :options="opcionesLinea" />
+            <Chart
+              :key="'tiempo-' + chartRenderKey"
+              type="line"
+              :data="chartTiempoRespuesta"
+              :options="opcionesLinea"
+            />
           </div>
         </div>
 
         <div v-if="chartCargaAnalista" class="chart-card chart-wide">
           <h3>Carga por analista</h3>
           <div class="chart-box chart-box-carga">
-            <Chart type="bar" :data="chartCargaAnalista" :options="opcionesBarrasApiladas" />
+            <Chart
+              :key="'carga-' + chartRenderKey"
+              type="bar"
+              :data="chartCargaAnalista"
+              :options="opcionesBarrasApiladas"
+            />
           </div>
         </div>
 
         <div v-if="chartSerieMensual" class="chart-card chart-wide">
           <h3>Serie mensual: creadas, cerradas y vencidas</h3>
           <div class="chart-box chart-box-tall">
-            <Chart type="line" :data="chartSerieMensual" :options="opcionesSerieMensual" />
+            <Chart
+              :key="'serie-' + chartRenderKey"
+              type="line"
+              :data="chartSerieMensual"
+              :options="opcionesSerieMensual"
+            />
           </div>
         </div>
       </div>

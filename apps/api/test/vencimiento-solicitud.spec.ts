@@ -1,7 +1,9 @@
 import {
   esSolicitudVencida,
-  ESTADOS_ACTIVOS_VENCIMIENTO,
+  finTramoVencidoGanttMs,
+  inicioDiaHoyLaPaz,
   RequestStatus,
+  ESTADOS_ACTIVOS_VENCIMIENTO,
 } from '@bnb/shared';
 
 describe('esSolicitudVencida (Spark B7 — única fuente)', () => {
@@ -57,6 +59,19 @@ describe('esSolicitudVencida (Spark B7 — única fuente)', () => {
         medianocheUtcNov21,
       ),
     ).toBe(true);
+  });
+
+  it('fin tramo vencido en Gantt: activa con compromiso llega hasta hoy (N8)', () => {
+    const hoy = new Date('2026-11-21T03:30:00.000Z');
+    const fin = finTramoVencidoGanttMs(
+      {
+        status: RequestStatus.EN_ANALISIS,
+        fechaRequerida: '2026-11-10T12:00:00.000Z',
+        fechaEntrega: '2026-11-19T12:00:00.000Z',
+      },
+      hoy,
+    );
+    expect(fin).toBe(inicioDiaHoyLaPaz(hoy));
   });
 
   it('estados activos incluyen los tres del boceto', () => {

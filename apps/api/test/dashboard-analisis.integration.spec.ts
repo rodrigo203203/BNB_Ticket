@@ -6,7 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { DashboardService } from '../src/modules/dashboard/dashboard.service';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { Role, UserSummary } from '@bnb/shared';
+import { Role, UserSummary, RequestStatus } from '@bnb/shared';
 
 const runIntegration = Boolean(process.env.DATABASE_URL);
 
@@ -55,6 +55,26 @@ const runIntegration = Boolean(process.env.DATABASE_URL);
       area,
     });
     expect(filtrado.resumen).toBeDefined();
+
+    const sumEstado = Object.values(base.porEstado).reduce((a, b) => a + b, 0);
+    expect(sumEstado).toBeGreaterThan(0);
+    expect(base.porAreaRequester?.length).toBeGreaterThan(0);
+    expect(base.cargaPorAnalista?.length).toBeGreaterThan(0);
+    expect(base.serieMensual?.some((m) => m.creadas + m.cerradas + m.vencidas > 0)).toBe(true);
+    const activos = [
+      RequestStatus.REGISTRADA,
+      RequestStatus.EN_ANALISIS,
+      RequestStatus.EN_REVISION_COORDINACION,
+    ];
+    const sumCarga = base.cargaPorAnalista.reduce(
+      (a, row) =>
+        a +
+        activos.reduce((s, st) => s + (row.porEstado[st] ?? 0), 0) +
+        row.vencidas,
+      0,
+    );
+    expect(sumCarga).toBeGreaterThan(0);
+    expect(base.resumen.tiempoPromedioRespuestaDias.valor).toBeGreaterThan(0);
   });
 
   it('analista: solo su universo asignado', async () => {

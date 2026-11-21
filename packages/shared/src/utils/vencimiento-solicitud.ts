@@ -1,5 +1,5 @@
 import { RequestStatus } from '../enums/index.js';
-import { obtenerDiaCalendarioEnZona, inicioDiaHoyLaPaz } from './fechas-solicitud.js';
+import { obtenerDiaCalendarioEnZona, inicioDiaHoyLaPaz, instanteCalendarioLaPaz } from './fechas-solicitud.js';
 
 /** Estados activos para evaluar vencimiento operativo (boceto 02). */
 export const ESTADOS_ACTIVOS_VENCIMIENTO: RequestStatus[] = [
@@ -68,13 +68,33 @@ export function esSolicitudVencida(
   return diaRef > diaReq;
 }
 
-/** Fin del tramo rojo en Gantt: hoy en La Paz cuando sigue activa/vencida. */
+const ESTADOS_CERRADOS: RequestStatus[] = [
+  RequestStatus.APROBADA,
+  RequestStatus.RECHAZADA,
+  RequestStatus.CANCELADA,
+];
+
+/** Solicitud cerrada (entrega efectiva registrada en flujo, no compromiso en activa). */
+export function solicitudEntregadaCerrada(status: RequestStatus): boolean {
+  return ESTADOS_CERRADOS.includes(status);
+}
+
+/**
+ * Fin del tramo rojo en Gantt (N8): activa sin cierre → hoy aunque haya fecha de entrega comprometida;
+ * cerrada → día de entrega declarado.
+ */
 export function finTramoVencidoGanttMs(
-  s: SolicitudParaVencimiento,
+  s: SolicitudParaVencimiento & { status: RequestStatus },
   ahora: Date = new Date(),
 ): number {
   if (!esSolicitudVencida(s, ahora)) {
     return inicioDiaHoyLaPaz(ahora);
+  }
+  if (!solicitudEntregadaCerrada(s.status)) {
+    return inicioDiaHoyLaPaz(ahora);
+  }
+  if (s.fechaEntrega) {
+    return instanteCalendarioLaPaz(s.fechaEntrega);
   }
   return inicioDiaHoyLaPaz(ahora);
 }

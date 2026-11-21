@@ -18,6 +18,7 @@ import {
   inicioMesCalendarioLaPaz,
   finMesCalendarioLaPaz,
   formatearFechaCalendarioLaPaz,
+  finTramoVencidoGanttMs,
 } from '@bnb/shared';
 
 const router = useRouter();
@@ -289,10 +290,14 @@ function barStyle(s: SolicitudGanttItem) {
 }
 
 function finTramoVencidoMs(s: SolicitudGanttItem): number {
-  if (s.fechaEntrega) {
-    return instanteCalendarioLaPaz(s.fechaEntrega);
-  }
-  return inicioDiaHoyLaPaz();
+  return finTramoVencidoGanttMs(
+    {
+      status: s.status,
+      fechaRequerida: s.fechaRequerida,
+      fechaEntrega: s.fechaEntrega,
+    },
+    new Date(),
+  );
 }
 
 function barStyleTramoVencido(s: SolicitudGanttItem) {
@@ -452,22 +457,26 @@ const zoomHint = computed(() => {
                 <small class="head-sub">Analista · Área</small>
               </div>
               <div class="gantt-track-col track-col-padded">
-                <div class="tick-row">
-                  <span
-                    v-for="(t, i) in ticks"
-                    :key="i"
-                    class="tick"
-                    :style="{ left: t.x + '%' }"
-                  >
-                    {{ t.label }}
-                  </span>
-                  <span
-                    v-if="lineaHoy"
-                    class="hoy-label hoy-label--head"
-                    :style="{ left: lineaHoy.x + '%' }"
-                  >
-                    {{ lineaHoy.label }}
-                  </span>
+                <div class="axis-head">
+                  <div class="hoy-label-row">
+                    <span
+                      v-if="lineaHoy"
+                      class="hoy-label hoy-label--head"
+                      :style="{ left: lineaHoy.x + '%' }"
+                    >
+                      {{ lineaHoy.label }}
+                    </span>
+                  </div>
+                  <div class="tick-row">
+                    <span
+                      v-for="(t, i) in ticks"
+                      :key="i"
+                      class="tick"
+                      :style="{ left: t.x + '%' }"
+                    >
+                      {{ t.label }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -733,10 +742,23 @@ const zoomHint = computed(() => {
   min-height: 44px;
 }
 
+.axis-head {
+  position: relative;
+}
+
+.hoy-label-row {
+  position: relative;
+  height: 1.15rem;
+}
+
 .tick-row {
   position: relative;
-  height: 44px;
+  height: 36px;
   border-bottom: 1px dashed #e2e8f0;
+}
+
+.gantt-row-head .gantt-track-col {
+  overflow: visible;
 }
 
 .tick {
@@ -830,8 +852,9 @@ const zoomHint = computed(() => {
 }
 
 .hoy-label--head {
-  top: -6px;
-  transform: translate(-50%, -100%);
+  top: 0;
+  transform: translate(-50%, 0);
+  pointer-events: none;
 }
 
 .gantt-bar--overdue-trail {

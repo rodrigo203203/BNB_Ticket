@@ -281,8 +281,9 @@ async function main() {
       justification: 'Plan estratégico de retención.',
       estimatedHours: 40,
       fechaRequerida: diaUtc(2026, 10, 1),
-      fechaEntrega: diaUtc(2026, 10, 25),
-      closedAt: new Date(),
+      fechaEntrega: diaRelativoLaPaz(-3),
+      createdAt: diaRelativoLaPaz(-22),
+      closedAt: diaRelativoLaPaz(-3),
     },
   });
 
