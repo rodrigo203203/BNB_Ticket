@@ -141,6 +141,9 @@ const priorityClass: Record<string, string> = {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .category-tag {
