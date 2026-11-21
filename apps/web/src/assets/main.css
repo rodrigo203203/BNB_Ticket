@@ -39,6 +39,33 @@ button {
   cursor: pointer;
 }
 
+/* T10: pulido accesibilidad y títulos compartidos */
+:focus-visible {
+  outline: 2px solid var(--bnb-purple);
+  outline-offset: 2px;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--bnb-gray-800);
+  margin: 0;
+}
+
+.page-subtitle {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.content-card {
+  background: #fff;
+  border: 1px solid var(--bnb-gray-200);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+}
+
 /* Clases utilitarias de marca BNB */
 .bg-bnb-green {
   background-color: var(--bnb-green);
