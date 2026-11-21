@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import DatePicker from 'primevue/datepicker';
 import Button from 'primevue/button';
@@ -15,9 +15,12 @@ import {
   RequestStatus,
   ALLOWED_STATUS_TRANSITIONS,
   canEditFechaEntrega,
-  etiquetaEstadoPlazo,
   fechaCalendarioToIso,
   EncargadoConCarga,
+  ROLE_LABELS,
+  descripcionEstadoPlazoUi,
+  formatearFechaCalendarioLaPaz,
+  formatearFechaHoraLaPaz,
 } from '@bnb/shared';
 
 const route = useRoute();
@@ -67,7 +70,8 @@ const puedeConfirmarAsignacion = computed(() => {
 
 function cargaLabel(u: EncargadoConCarga) {
   const map: Record<string, string> = { baja: 'Baja', media: 'Media', alta: 'Alta' };
-  return map[u.nivel] ?? u.nivel;
+  const nivel = map[u.nivel] ?? u.nivel;
+  return `${nivel} · ${u.puntosCarga} pts`;
 }
 
 const availableTransitions = computed(() => {
@@ -85,12 +89,23 @@ const puedeEditarFechaEntrega = computed(() => {
   });
 });
 
-const estadoPlazoLabel = computed(() => {
+const estadoPlazoUi = computed(() => {
   if (!solicitud.value?.fechaRequerida) return null;
-  return etiquetaEstadoPlazo(solicitud.value.fechaRequerida, solicitud.value.fechaEntrega);
+  return descripcionEstadoPlazoUi(solicitud.value.fechaRequerida, solicitud.value.fechaEntrega);
 });
 
-const estadoPlazoEsAtraso = computed(() => estadoPlazoLabel.value === 'Atraso');
+const estadoPlazoEsAtraso = computed(() => estadoPlazoUi.value?.tono === 'atraso');
+
+const estadoPlazoEsAmbar = computed(() => estadoPlazoUi.value?.tono === 'ambar');
+
+const lineaUltimaModificacionEntrega = computed(() => {
+  const s = solicitud.value;
+  if (!s?.fechaEntrega) return null;
+  const rol = s.assignedAnalystName
+    ? `Analista (${s.assignedAnalystName})`
+    : 'Gerencia de Datos';
+  return `Última modificación por ${rol} · ${formatearFechaHoraLaPaz(s.updatedAt)}`;
+});
 
 function isoToDateLocal(iso: string | null): Date | null {
   if (!iso) return null;
@@ -99,12 +114,7 @@ function isoToDateLocal(iso: string | null): Date | null {
 }
 
 function formatearSoloFecha(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('es-BO', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return formatearFechaCalendarioLaPaz(iso);
 }
 
 watch(
@@ -158,6 +168,9 @@ async function openAssignModal() {
     selectedAnalystId.value = solicitud.value?.assignedAnalystId || (assignableUsers.value[0]?.id ?? '');
     assignComment.value = '';
     showAssignModal.value = true;
+    await nextTick();
+    const lista = document.querySelector('.assign-list-scroll');
+    lista?.scrollTo(0, 0);
   } catch (err: any) {
     alert('Error al cargar analistas disponibles: ' + (err.response?.data?.message || err.message));
   }
@@ -263,9 +276,9 @@ onMounted(() => {
             </div>
             <h1 class="ticket-title">{{ solicitud.title }}</h1>
             <div class="ticket-meta">
-              <span>Registrado el {{ new Date(solicitud.createdAt).toLocaleString() }}</span>
+              <span>Registrado el {{ formatearFechaHoraLaPaz(solicitud.createdAt) }}</span>
               <span v-if="solicitud.closedAt" class="closed-tag">
-                • Cerrado el {{ new Date(solicitud.closedAt).toLocaleString() }}
+                • Cerrado el {{ formatearFechaHoraLaPaz(solicitud.closedAt) }}
               </span>
             </div>
           </div>
@@ -352,7 +365,7 @@ onMounted(() => {
                       date-format="dd/mm/yy"
                       show-icon
                       fluid
-                      placeholder="Fecha comprometida de entrega"
+                      placeholder="dd/mm/aaaa"
                       input-class="fecha-picker-input"
                     />
                     <Button
@@ -370,16 +383,24 @@ onMounted(() => {
                     {{ formatearSoloFecha(solicitud.fechaEntrega) }}
                     <small v-if="!solicitud.fechaEntrega" class="fecha-pendiente">Sin definir</small>
                   </span>
+                  <p v-if="lineaUltimaModificacionEntrega" class="fecha-modificacion">
+                    {{ lineaUltimaModificacionEntrega }}
+                  </p>
                 </div>
               </div>
 
-              <div v-if="solicitud.fechaRequerida && estadoPlazoLabel" class="plazo-status-row">
+              <div v-if="solicitud.fechaRequerida && estadoPlazoUi" class="plazo-status-row">
                 <span class="plazo-label">Estado de plazo:</span>
                 <span
                   class="plazo-badge"
-                  :class="estadoPlazoEsAtraso ? 'plazo-atraso' : 'plazo-ok'"
+                  :class="{
+                    'plazo-atraso': estadoPlazoEsAtraso,
+                    'plazo-ok': estadoPlazoUi.tono === 'ok',
+                    'plazo-neutro': estadoPlazoUi.tono === 'neutro',
+                    'plazo-ambar': estadoPlazoEsAmbar,
+                  }"
                 >
-                  {{ estadoPlazoLabel }}
+                  {{ estadoPlazoUi.texto }}
                 </span>
               </div>
             </div>
@@ -390,9 +411,11 @@ onMounted(() => {
               <p class="description-text">{{ solicitud.description }}</p>
             </div>
 
-            <div v-if="solicitud.camposRequeridos" class="content-box campos-box">
-              <h3 class="box-title">Campos o variables solicitadas</h3>
-              <p class="description-text">{{ solicitud.camposRequeridos }}</p>
+            <div class="content-box campos-box">
+              <h3 class="box-title">Campos de data requeridos</h3>
+              <p class="description-text">
+                {{ solicitud.camposRequeridos?.trim() || 'No especificados' }}
+              </p>
             </div>
 
             <div class="content-box">
@@ -461,7 +484,7 @@ onMounted(() => {
                   <div class="timeline-content">
                     <div class="timeline-head">
                       <span class="timeline-author">{{ hist.authorName }}</span>
-                      <span class="timeline-date">{{ new Date(hist.createdAt).toLocaleString() }}</span>
+                      <span class="timeline-date">{{ formatearFechaHoraLaPaz(hist.createdAt) }}</span>
                     </div>
                     <div class="timeline-badge-row">
                       <span :class="['badge-status-sm', hist.newStatus.toLowerCase()]">
@@ -493,6 +516,8 @@ onMounted(() => {
 
           <div class="assign-list">
             <label class="assign-list-label">Encargado responsable <span class="required">*</span></label>
+            <p class="assign-orden-hint">Ordenado de menor a mayor carga</p>
+            <div class="assign-list-scroll">
             <label
               v-for="u in assignableUsers"
               :key="u.id"
@@ -502,12 +527,13 @@ onMounted(() => {
               <input v-model="selectedAnalystId" type="radio" name="analyst" :value="u.id" />
               <span class="assign-row-main">
                 <strong>{{ u.fullName }}</strong>
-                <small>{{ u.role }} · {{ u.area }}</small>
+                <small>{{ ROLE_LABELS[u.role] }} · {{ u.area }}</small>
                 <small class="assign-stats">{{ u.activas }} activas, {{ u.vencidas }} vencidas</small>
               </span>
               <span :class="['carga-pill', `carga-pill--${u.nivel}`]">{{ cargaLabel(u) }}</span>
               <span v-if="u.nivel === 'alta'" class="alta-warning">! Aviso: carga alta</span>
             </label>
+            </div>
           </div>
 
           <div class="form-group">
@@ -829,7 +855,14 @@ onMounted(() => {
 }
 
 .fecha-item-entrega {
+  grid-column: 1 / -1;
   min-width: 0;
+}
+
+.fecha-modificacion {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
 }
 
 .fecha-label {
@@ -911,6 +944,16 @@ onMounted(() => {
 .plazo-atraso {
   background: #fee2e2;
   color: #b91c1c;
+}
+
+.plazo-neutro {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.plazo-ambar {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .box-title {
@@ -1113,10 +1156,22 @@ onMounted(() => {
 .assign-list {
   display: flex;
   flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.assign-orden-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.assign-list-scroll {
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
   max-height: 240px;
   overflow-y: auto;
-  margin-bottom: 1rem;
 }
 
 .assign-list-label {

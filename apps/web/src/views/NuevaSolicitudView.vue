@@ -17,6 +17,13 @@ import {
   ADJUNTO_MAX_POR_SOLICITUD,
 } from '@bnb/shared';
 
+/** Muestra tamaño legible en la lista de adjuntos pendientes (Spark M2). */
+function formatearBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 const router = useRouter();
 
 const title = ref('');
@@ -33,10 +40,7 @@ const fileInputNueva = ref<HTMLInputElement | null>(null);
 
 const acceptAdjuntos = ADJUNTO_EXTENSIONES_PERMITIDAS.map((e) => `.${e}`).join(',');
 
-function onSeleccionArchivos(ev: Event) {
-  const input = ev.target as HTMLInputElement;
-  const nuevos = input.files ? Array.from(input.files) : [];
-  input.value = '';
+function agregarArchivosPendientes(nuevos: File[]) {
   for (const f of nuevos) {
     if (archivosPendientes.value.length >= ADJUNTO_MAX_POR_SOLICITUD) break;
     const ext = (f.name.split('.').pop() || '').toLowerCase();
@@ -50,6 +54,19 @@ function onSeleccionArchivos(ev: Event) {
     }
     archivosPendientes.value.push(f);
   }
+}
+
+function onSeleccionArchivos(ev: Event) {
+  const input = ev.target as HTMLInputElement;
+  const nuevos = input.files ? Array.from(input.files) : [];
+  input.value = '';
+  agregarArchivosPendientes(nuevos);
+}
+
+function onDropAdjuntos(ev: DragEvent) {
+  ev.preventDefault();
+  const nuevos = ev.dataTransfer?.files ? Array.from(ev.dataTransfer.files) : [];
+  agregarArchivosPendientes(nuevos);
 }
 
 function quitarPendiente(index: number) {
@@ -108,6 +125,11 @@ async function handleSubmit() {
     return;
   }
 
+  if (!camposRequeridos.value.trim()) {
+    errorMessage.value = 'Describa los campos de data requeridos.';
+    return;
+  }
+
   const isoFecha = fechaCalendarioToIso(fechaRequerida.value);
   if (!esFechaRequeridaPosteriorAHoy(isoFecha)) {
     errorMessage.value =
@@ -126,7 +148,7 @@ async function handleSubmit() {
       priority: priority.value,
       justification: justification.value.trim() || undefined,
       fechaRequerida: isoFecha,
-      camposRequeridos: camposRequeridos.value.trim() || undefined,
+      camposRequeridos: camposRequeridos.value.trim(),
     });
 
     const newId = res.data?.id || res.id;
@@ -264,11 +286,18 @@ async function handleSubmit() {
               <p v-if="fechaRequerida" class="fecha-preview">
                 Plazo seleccionado: {{ formatearFechaLarga(fechaRequerida) }}
               </p>
+              <div class="info-nota-fecha" role="note">
+                <font-awesome-icon icon="circle-exclamation" />
+                <span>
+                  La fecha de entrega la define Gerencia de Datos (analista asignado, coordinador o
+                  administrador). La verá en el detalle de la solicitud (solo lectura).
+                </span>
+              </div>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="camposRequeridos">Campos o variables requeridas</label>
+            <label for="camposRequeridos">Campos de data requeridos <span class="required">*</span></label>
             <Textarea
               id="camposRequeridos"
               v-model="camposRequeridos"
@@ -306,29 +335,43 @@ async function handleSubmit() {
             Archivos adjuntos (opcional)
           </h2>
           <p class="help-text adjuntos-intro">
-            Especificaciones, plantillas o muestras. Se cargan al enviar la solicitud (máx.
-            {{ ADJUNTO_MAX_POR_SOLICITUD }} archivos).
+            PDF, XLSX, CSV, DOCX · máx. 10 MB c/u · hasta {{ ADJUNTO_MAX_POR_SOLICITUD }} archivos.
           </p>
-          <input
-            ref="fileInputNueva"
-            type="file"
-            class="hidden-file-input"
-            :accept="acceptAdjuntos"
-            multiple
-            @change="onSeleccionArchivos"
-          />
-          <Button
-            type="button"
-            label="Seleccionar archivos"
-            icon="pi pi-upload"
-            severity="secondary"
-            :disabled="archivosPendientes.length >= ADJUNTO_MAX_POR_SOLICITUD"
+          <div
+            class="adjuntos-box"
+            role="button"
+            tabindex="0"
             @click="fileInputNueva?.click()"
-          />
+            @keydown.enter="fileInputNueva?.click()"
+            @dragover.prevent
+            @drop="onDropAdjuntos"
+          >
+            <font-awesome-icon icon="folder" class="adjuntos-icon" />
+            <p class="adjuntos-text">
+              Arrastre archivos aquí o use el botón. Se suben al crear la solicitud.
+            </p>
+            <input
+              ref="fileInputNueva"
+              type="file"
+              class="hidden-file-input"
+              :accept="acceptAdjuntos"
+              multiple
+              @change="onSeleccionArchivos"
+            />
+            <Button
+              type="button"
+              label="Seleccionar archivos"
+              icon="pi pi-upload"
+              severity="secondary"
+              :disabled="archivosPendientes.length >= ADJUNTO_MAX_POR_SOLICITUD"
+              @click.stop="fileInputNueva?.click()"
+            />
+          </div>
           <ul v-if="archivosPendientes.length" class="pendientes-list">
             <li v-for="(f, idx) in archivosPendientes" :key="`${f.name}-${idx}`" class="pendiente-item">
               <font-awesome-icon icon="folder" />
-              <span>{{ f.name }}</span>
+              <span class="pendiente-nombre">{{ f.name }}</span>
+              <span class="pendiente-size">{{ formatearBytes(f.size) }}</span>
               <button type="button" class="btn-quitar" title="Quitar" @click="quitarPendiente(idx)">
                 <font-awesome-icon icon="xmark" />
               </button>
@@ -542,6 +585,20 @@ async function handleSubmit() {
   font-weight: 600;
 }
 
+.info-nota-fecha {
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .hidden-file-input {
   display: none;
 }
@@ -568,6 +625,19 @@ async function handleSubmit() {
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   font-size: 0.9rem;
+}
+
+.pendiente-nombre {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pendiente-size {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 .btn-quitar {

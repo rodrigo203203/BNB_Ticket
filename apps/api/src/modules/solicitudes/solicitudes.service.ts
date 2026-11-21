@@ -43,6 +43,9 @@ export class SolicitudesService {
         'La fecha requerida debe ser posterior al día de hoy (calendario America/La_Paz)',
       );
     }
+    if (!dto.camposRequeridos?.trim()) {
+      throw new BadRequestException('Los campos de data requeridos son obligatorios');
+    }
 
     const year = new Date().getFullYear();
     const countToday = await this.prisma.solicitud.count();
@@ -60,7 +63,7 @@ export class SolicitudesService {
         requesterArea: user.area,
         justification: dto.justification || null,
         fechaRequerida: new Date(dto.fechaRequerida),
-        camposRequeridos: dto.camposRequeridos?.trim() || null,
+        camposRequeridos: dto.camposRequeridos.trim(),
       },
       include: {
         requester: true,
@@ -423,6 +426,8 @@ export class SolicitudesService {
         status: r.status as RequestStatus,
         priority: r.priority as RequestPriority,
         assignedAnalystName: r.assignedAnalyst?.fullName ?? null,
+        assignedAnalystId: r.assignedAnalystId,
+        requesterArea: r.requesterArea,
         fechaRequerida,
         fechaEntrega,
         createdAt: r.createdAt.toISOString(),

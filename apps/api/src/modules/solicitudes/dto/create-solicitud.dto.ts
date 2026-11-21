@@ -59,12 +59,12 @@ export class CreateSolicitudDto {
   @IsFechaRequeridaFutura()
   fechaRequerida!: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'Campos: saldo, dias_mora, garantia, fecha_corte',
-    description: 'Campos o variables de la data solicitada',
+    description: 'Campos o variables de la data solicitada (obligatorio, Spark M1)',
   })
-  @IsOptional()
-  @IsString()
+  @IsString({ message: 'Los campos de data deben ser texto' })
+  @IsNotEmpty({ message: 'Los campos de data requeridos son obligatorios' })
   @MaxLength(4000)
-  camposRequeridos?: string;
+  camposRequeridos!: string;
 }

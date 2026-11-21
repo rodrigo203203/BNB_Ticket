@@ -1,12 +1,30 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
 import { apiClient } from '../api/client';
-import { EquipoCargaResponse, ROLE_LABELS } from '@bnb/shared';
+import { useAuthStore } from '../stores/auth.store';
+import {
+  EquipoCargaResponse,
+  EquipoCargaPersonaRow,
+  ROLE_LABELS,
+  RequestStatus,
+  STATUS_LABELS,
+  Role,
+  formatearFechaCalendarioLaPaz,
+  NivelCarga,
+} from '@bnb/shared';
 
+const authStore = useAuthStore();
 const data = ref<EquipoCargaResponse | null>(null);
 const loading = ref(true);
 const errorMessage = ref('');
+
+const filtroRol = ref<Role | ''>('');
+const filtroArea = ref('');
+const filtroNivel = ref<NivelCarga | ''>('');
+const ordenCarga = ref<'desc' | 'asc'>('desc');
+
+const esVistaPropia = computed(() => authStore.user?.role === Role.ANALISTA);
 
 async function cargar() {
   loading.value = true;
@@ -24,8 +42,49 @@ async function cargar() {
 
 onMounted(cargar);
 
+const areasDisponibles = computed(() => {
+  if (!data.value) return [] as string[];
+  const set = new Set(data.value.personas.map((p) => p.area).filter(Boolean));
+  return Array.from(set).sort();
+});
+
+const personasFiltradas = computed(() => {
+  if (!data.value) return [] as EquipoCargaPersonaRow[];
+  let filas = [...data.value.personas];
+  if (filtroRol.value) filas = filas.filter((p) => p.role === filtroRol.value);
+  if (filtroArea.value) filas = filas.filter((p) => p.area === filtroArea.value);
+  if (filtroNivel.value) filas = filas.filter((p) => p.nivel === filtroNivel.value);
+  filas.sort((a, b) =>
+    ordenCarga.value === 'desc' ? b.puntosCarga - a.puntosCarga : a.puntosCarga - b.puntosCarga,
+  );
+  return filas;
+});
+
+const estadosBarra = [
+  RequestStatus.REGISTRADA,
+  RequestStatus.EN_ANALISIS,
+  RequestStatus.EN_REVISION_COORDINACION,
+] as const;
+
+function totalActivasPorEstado(p: EquipoCargaPersonaRow) {
+  return estadosBarra.reduce((sum, st) => sum + (p.porEstado[st] ?? 0), 0);
+}
+
+function pctSegmento(p: EquipoCargaPersonaRow, st: RequestStatus): number {
+  const total = totalActivasPorEstado(p);
+  if (!total) return 0;
+  return ((p.porEstado[st] ?? 0) / total) * 100;
+}
+
 function nivelClass(nivel: string) {
   return `nivel-${nivel}`;
+}
+
+function limpiarFiltros() {
+  filtroRol.value = '';
+  filtroArea.value = '';
+  filtroNivel.value = '';
+  ordenCarga.value = 'desc';
 }
 </script>
 
@@ -34,9 +93,10 @@ function nivelClass(nivel: string) {
     <div class="carga-page">
       <div class="carga-header">
         <div>
-          <h1 class="page-title">Carga del equipo</h1>
+          <h1 class="page-title">{{ esVistaPropia ? 'Mi carga de trabajo' : 'Carga del equipo' }}</h1>
           <p class="page-subtitle">
-            Vista operativa (boceto 04). Orden ascendente por puntos de carga — ideal para asignar nuevos tickets.
+            Vista operativa de activas, vencidas y próximas entregas. Por defecto ordenada de mayor a
+            menor carga.
           </p>
         </div>
         <button type="button" class="refresh-btn" :disabled="loading" @click="cargar">
@@ -64,7 +124,7 @@ function nivelClass(nivel: string) {
           </div>
           <div class="resumen-card warn">
             <span class="resumen-label">Vencidas</span>
-            <span class="resumen-value">{{ data.resumen.vencidasTotales }}</span>
+            <span class="resumen-value text-vencida">{{ data.resumen.vencidasTotales }}</span>
           </div>
           <div class="resumen-card info">
             <span class="resumen-label">Por vencer (3 días)</span>
@@ -72,37 +132,93 @@ function nivelClass(nivel: string) {
           </div>
         </div>
 
+        <div v-if="!esVistaPropia" class="filtros-bar">
+          <label class="filtro-field">
+            <span>Rol</span>
+            <select v-model="filtroRol" class="filtro-select">
+              <option value="">Todos</option>
+              <option :value="Role.ANALISTA">{{ ROLE_LABELS[Role.ANALISTA] }}</option>
+              <option :value="Role.COORDINADOR">{{ ROLE_LABELS[Role.COORDINADOR] }}</option>
+              <option :value="Role.ADMINISTRADOR">{{ ROLE_LABELS[Role.ADMINISTRADOR] }}</option>
+            </select>
+          </label>
+          <label class="filtro-field">
+            <span>Área</span>
+            <select v-model="filtroArea" class="filtro-select">
+              <option value="">Todas</option>
+              <option v-for="a in areasDisponibles" :key="a" :value="a">{{ a }}</option>
+            </select>
+          </label>
+          <label class="filtro-field">
+            <span>Carga</span>
+            <select v-model="filtroNivel" class="filtro-select">
+              <option value="">Todos los niveles</option>
+              <option value="baja">Baja</option>
+              <option value="media">Media</option>
+              <option value="alta">Alta</option>
+            </select>
+          </label>
+          <label class="filtro-field">
+            <span>Ordenar</span>
+            <select v-model="ordenCarga" class="filtro-select">
+              <option value="desc">Mayor a menor</option>
+              <option value="asc">Menor a mayor</option>
+            </select>
+          </label>
+          <button type="button" class="btn-limpiar" @click="limpiarFiltros">Limpiar filtros</button>
+        </div>
+
         <div class="table-card">
           <table class="data-table">
             <thead>
               <tr>
                 <th>Encargado</th>
-                <th>Rol</th>
                 <th>Puntos</th>
                 <th>Nivel</th>
-                <th>Activas</th>
+                <th>Activas por estado</th>
                 <th>Vencidas</th>
                 <th>Por vencer</th>
                 <th class="hide-mobile">Próx. entrega</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="p in data.personas" :key="p.id">
+              <tr v-for="p in personasFiltradas" :key="p.id">
                 <td>
                   <strong>{{ p.fullName }}</strong>
                   <small class="email-sub">{{ p.email }}</small>
+                  <small class="rol-area">{{ ROLE_LABELS[p.role] }} · {{ p.area }}</small>
                 </td>
-                <td>{{ ROLE_LABELS[p.role] }}</td>
                 <td>{{ p.puntosCarga }}</td>
                 <td>
-                  <span class="nivel-pill" :class="nivelClass(p.nivel)">{{ p.nivel }}</span>
+                  <span class="nivel-pill" :class="nivelClass(p.nivel)"
+                    >{{ p.nivel }} · {{ p.puntosCarga }} pts</span
+                  >
                 </td>
-                <td>{{ p.activas }}</td>
-                <td>{{ p.vencidas }}</td>
+                <td>
+                  <div class="stack-bar" :title="`${p.activas} activas`">
+                    <span
+                      v-for="st in estadosBarra"
+                      :key="st"
+                      class="stack-seg"
+                      :class="`seg-${st.toLowerCase()}`"
+                      :style="{ width: pctSegmento(p, st) + '%' }"
+                    >
+                      <template v-if="(p.porEstado[st] ?? 0) > 0">{{ p.porEstado[st] }}</template>
+                    </span>
+                  </div>
+                  <small class="stack-legend">
+                    <template v-for="st in estadosBarra" :key="st">
+                      <span v-if="(p.porEstado[st] ?? 0) > 0"
+                        >{{ STATUS_LABELS[st] }}: {{ p.porEstado[st] }}
+                      </span>
+                    </template>
+                  </small>
+                </td>
+                <td class="col-vencida">{{ p.vencidas }}</td>
                 <td>{{ p.porVencer }}</td>
                 <td class="hide-mobile">
                   <template v-if="p.proximaFechaEntrega">
-                    {{ new Date(p.proximaFechaEntrega).toLocaleDateString('es-BO') }}
+                    {{ formatearFechaCalendarioLaPaz(p.proximaFechaEntrega) }}
                     <small v-if="p.proximaSolicitudCodigo">({{ p.proximaSolicitudCodigo }})</small>
                   </template>
                   <span v-else>—</span>
@@ -153,6 +269,38 @@ function nivelClass(nivel: string) {
   align-items: center;
 }
 
+.filtros-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.filtro-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.filtro-select {
+  min-width: 150px;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-limpiar {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
 .resumen-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -167,12 +315,8 @@ function nivelClass(nivel: string) {
   padding: 0.85rem 1rem;
 }
 
-.resumen-card.warn .resumen-value {
-  color: #b45309;
-}
-
-.resumen-card.info .resumen-value {
-  color: #2563eb;
+.text-vencida {
+  color: #dc2626 !important;
 }
 
 .resumen-label {
@@ -214,10 +358,20 @@ function nivelClass(nivel: string) {
   font-size: 0.8rem;
 }
 
-.email-sub {
+.email-sub,
+.rol-area {
   display: block;
   color: #94a3b8;
   font-size: 0.78rem;
+}
+
+.rol-area {
+  color: #64748b;
+}
+
+.col-vencida {
+  color: #dc2626;
+  font-weight: 600;
 }
 
 .nivel-pill {
@@ -241,6 +395,44 @@ function nivelClass(nivel: string) {
 .nivel-alta {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.stack-bar {
+  display: flex;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  min-width: 120px;
+}
+
+.stack-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #0f172a;
+  min-width: 2px;
+}
+
+.seg-registrada {
+  background: #bae6fd;
+}
+
+.seg-en_analisis {
+  background: #fde68a;
+}
+
+.seg-en_revision_coordinacion {
+  background: #ddd6fe;
+}
+
+.stack-legend {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  color: #64748b;
 }
 
 .loading-state,

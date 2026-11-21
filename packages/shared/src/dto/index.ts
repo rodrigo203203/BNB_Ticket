@@ -14,8 +14,8 @@ export interface CreateSolicitudRequestDto {
   justification?: string;
   /** Fecha en que el solicitante necesita recibir el dato (posterior a hoy, America/La_Paz) */
   fechaRequerida: string;
-  /** Descripción de los campos de data solicitados */
-  camposRequeridos?: string | null;
+  /** Descripción de los campos de data solicitados (obligatorio) */
+  camposRequeridos: string;
 }
 
 export interface UpdateFechaEntregaRequestDto {

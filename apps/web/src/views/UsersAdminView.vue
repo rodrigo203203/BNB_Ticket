@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
 import { apiClient } from '../api/client';
-import { UserSummary, Role, ROLE_LABELS } from '@bnb/shared';
+import { UserSummary, Role, ROLE_LABELS, formatearFechaHoraLaPaz } from '@bnb/shared';
 
 const users = ref<UserSummary[]>([]);
 const loading = ref(false);
@@ -311,7 +311,7 @@ onMounted(() => {
                 </span>
               </td>
               <td class="hide-mobile" data-label="Último acceso">
-                {{ u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Sin accesos' }}
+                {{ u.lastLoginAt ? formatearFechaHoraLaPaz(u.lastLoginAt) : 'Sin accesos' }}
               </td>
               <td data-label="Acciones">
                 <div class="action-buttons">

@@ -132,6 +132,9 @@ export interface SolicitudGanttItem {
   status: RequestStatus;
   priority: RequestPriority;
   assignedAnalystName: string | null;
+  /** Spark M9: área solicitante en columna «Analista · Área». */
+  requesterArea?: string;
+  assignedAnalystId?: string | null;
   fechaRequerida: string | null;
   fechaEntrega: string | null;
   createdAt: string;

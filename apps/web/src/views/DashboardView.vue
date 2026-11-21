@@ -5,7 +5,7 @@ import AppLayout from '../layouts/AppLayout.vue';
 import DashboardAnalisisPanel from '../components/DashboardAnalisisPanel.vue';
 import { useAuthStore } from '../stores/auth.store';
 import { useDashboardStore } from '../stores/dashboard.store';
-import { Role, STATUS_LABELS } from '@bnb/shared';
+import { Role, STATUS_LABELS, formatearFechaCalendarioLaPaz } from '@bnb/shared';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -100,7 +100,9 @@ onMounted(async () => {
                 <td data-label="Título">{{ item.title }}</td>
                 <td class="hide-mobile" data-label="Categoría"><span class="category-tag">{{ item.category }}</span></td>
                 <td data-label="Estado"><span :class="['badge-status', item.status.toLowerCase()]">{{ STATUS_LABELS[item.status] }}</span></td>
-                <td class="hide-mobile" data-label="Fecha">{{ new Date(item.createdAt).toLocaleDateString() }}</td>
+                <td class="hide-mobile" data-label="Fecha">{{
+                  formatearFechaCalendarioLaPaz(item.createdAt)
+                }}</td>
               </tr>
               <tr v-if="dashboardStore.metrics.data.misSolicitudesRecientes.length === 0">
                 <td colspan="5" class="empty-cell">No registra solicitudes recientes.</td>
@@ -174,11 +176,6 @@ onMounted(async () => {
             <span class="stat-value text-purple">{{ dashboardStore.metrics.data.pendientesRevision }}</span>
             <font-awesome-icon icon="triangle-exclamation" class="stat-icon icon-purple" />
           </div>
-          <div class="stat-card">
-            <span class="stat-label">Solicitudes Activas</span>
-            <span class="stat-value">{{ dashboardStore.metrics.data.totalActivas }}</span>
-            <font-awesome-icon icon="layer-group" class="stat-icon icon-blue" />
-          </div>
         </div>
 
         <div class="dashboard-dual-column">
@@ -222,7 +219,9 @@ onMounted(async () => {
                 class="analyst-item"
               >
                 <span>{{ analyst.analystName }}</span>
-                <span class="badge-count">{{ analyst.count }} tickets</span>
+                <span class="badge-count">{{
+                  analyst.count === 1 ? '1 ticket' : `${analyst.count} tickets`
+                }}</span>
               </div>
             </div>
           </div>

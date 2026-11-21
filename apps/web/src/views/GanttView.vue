@@ -3,7 +3,14 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AppLayout from '../layouts/AppLayout.vue';
 import { apiClient } from '../api/client';
-import { SolicitudGanttItem, STATUS_LABELS } from '@bnb/shared';
+import {
+  SolicitudGanttItem,
+  STATUS_LABELS,
+  RequestStatus,
+  GANTT_FIN_BARRA_SIN_ENTREGA,
+  inicioDiaHoyLaPaz,
+  formatearFechaCalendarioLaPaz,
+} from '@bnb/shared';
 
 const router = useRouter();
 const items = ref<SolicitudGanttItem[]>([]);
@@ -15,7 +22,15 @@ type ZoomGantt = 'day' | 'week' | 'month';
 const zoom = ref<ZoomGantt>('week');
 
 const DAY_MS = 86_400_000;
-const LEFT_LABEL_W = 220;
+const LEFT_LABEL_W = 260;
+const TRACK_PADDING_END_PCT = 6;
+
+const ESTADOS_GANTT_LEYENDA: RequestStatus[] = [
+  RequestStatus.REGISTRADA,
+  RequestStatus.EN_ANALISIS,
+  RequestStatus.EN_REVISION_COORDINACION,
+  RequestStatus.APROBADA,
+];
 
 const ZOOM_LABELS: Record<ZoomGantt, string> = {
   day: 'Día',
@@ -68,15 +83,17 @@ const rango = computed(() => {
 
   let dataMin = Infinity;
   let dataMax = -Infinity;
+  const hoy = inicioDiaHoyLaPaz();
   for (const s of items.value) {
     const start = new Date(s.createdAt).getTime();
-    const end = new Date(s.fechaEntrega || s.fechaRequerida || s.createdAt).getTime();
+    const end = finBarraMs(s);
     dataMin = Math.min(dataMin, start, end);
     dataMax = Math.max(dataMax, start, end);
     if (s.fechaRequerida) {
       dataMax = Math.max(dataMax, new Date(s.fechaRequerida).getTime());
     }
   }
+  dataMax = Math.max(dataMax, hoy);
 
   let min: number;
   let max: number;
@@ -147,17 +164,65 @@ const ticks = computed(() => {
   return out;
 });
 
+/** Spark M8: sin entrega, barra punteada hasta fecha requerida (o hoy si faltara dato). */
+function finBarraMs(s: SolicitudGanttItem): number {
+  if (s.fechaEntrega) {
+    return new Date(s.fechaEntrega).getTime();
+  }
+  if (GANTT_FIN_BARRA_SIN_ENTREGA === 'fecha_requerida' && s.fechaRequerida) {
+    return new Date(s.fechaRequerida).getTime();
+  }
+  if (GANTT_FIN_BARRA_SIN_ENTREGA === 'hoy') {
+    return inicioDiaHoyLaPaz();
+  }
+  return s.fechaRequerida
+    ? new Date(s.fechaRequerida).getTime()
+    : inicioDiaHoyLaPaz();
+}
+
+function pctEnRango(t: number): number {
+  if (!rango.value) return 0;
+  const usable = 100 - TRACK_PADDING_END_PCT;
+  const raw = ((t - rango.value.min) / rango.value.span) * usable;
+  return Math.min(Math.max(raw, 0), usable);
+}
+
 function barStyle(s: SolicitudGanttItem) {
   if (!rango.value) return {};
-  const { min, span } = rango.value;
   const start = new Date(s.createdAt).getTime();
-  const end = new Date(s.fechaEntrega || s.fechaRequerida || s.createdAt).getTime();
-  const leftPct = ((start - min) / span) * 100;
-  const widthPct = Math.max(((end - start) / span) * 100, 1.2);
+  const end = finBarraMs(s);
+  const leftPct = pctEnRango(start);
+  const endPct = pctEnRango(end);
+  const widthPct = Math.max(endPct - leftPct, 1.2);
   return {
-    left: `${Math.max(0, leftPct)}%`,
+    left: `${leftPct}%`,
     width: `${widthPct}%`,
   };
+}
+
+const lineaHoy = computed(() => {
+  if (!rango.value || !items.value.length) return null;
+  const t = inicioDiaHoyLaPaz();
+  if (t < rango.value.min || t > rango.value.max) return null;
+  return {
+    x: pctEnRango(t),
+    label: `Hoy ${formatearFechaCalendarioLaPaz(new Date())}`,
+  };
+});
+
+function marcadorRequeridaStyle(s: SolicitudGanttItem) {
+  if (!rango.value || !s.fechaRequerida) return {};
+  return { left: `${pctEnRango(new Date(s.fechaRequerida).getTime())}%` };
+}
+
+function etiquetaAnalistaArea(s: SolicitudGanttItem): string {
+  const analista = s.assignedAnalystName?.trim() || 'Sin asignar';
+  const area = s.requesterArea?.trim() || '—';
+  return `${analista} · ${area}`;
+}
+
+function analistaSinAsignar(s: SolicitudGanttItem): boolean {
+  return !(s.assignedAnalystId || s.assignedAnalystName?.trim());
 }
 
 const zoomHint = computed(() => {
@@ -175,7 +240,8 @@ const zoomHint = computed(() => {
         <div>
           <h1 class="page-title">Diagrama Gantt</h1>
           <p class="page-subtitle">
-            Línea de tiempo por solicitud (boceto 03). Barra discontinua sin fecha de entrega; rojo si está vencida.
+            Cada barra va de la creación a la fecha de entrega definida por el analista. Sin entrega,
+            trazo punteado hasta la fecha requerida; el rombo (◇) marca ese mismo hito en la línea.
           </p>
           <p v-if="zoomHint" class="zoom-hint">{{ zoomHint }}</p>
         </div>
@@ -212,8 +278,11 @@ const zoomHint = computed(() => {
         <div class="gantt-scroll">
           <div class="gantt-grid" :style="{ minWidth: `${LEFT_LABEL_W + 720}px` }">
             <div class="gantt-row gantt-row-head">
-              <div class="gantt-label-col head-col">Solicitud</div>
-              <div class="gantt-track-col">
+              <div class="gantt-label-col head-col">
+                <span>Solicitud</span>
+                <small class="head-sub">Analista · Área</small>
+              </div>
+              <div class="gantt-track-col track-col-padded">
                 <div class="tick-row">
                   <span
                     v-for="(t, i) in ticks"
@@ -235,10 +304,19 @@ const zoomHint = computed(() => {
             >
               <div class="gantt-label-col">
                 <strong>{{ s.code }}</strong>
-                <span class="gantt-title">{{ s.title }}</span>
-                <small v-if="s.assignedAnalystName">{{ s.assignedAnalystName }}</small>
+                <span class="gantt-title" :title="s.title">{{ s.title }}</span>
+                <small
+                  class="gantt-analista-area"
+                  :class="{ 'sin-asignar': analistaSinAsignar(s) }"
+                >
+                  {{ etiquetaAnalistaArea(s) }}
+                </small>
               </div>
-              <div class="gantt-track-col">
+              <div class="gantt-track-col track-col-padded">
+                <span v-if="lineaHoy" class="hoy-line" :style="{ left: lineaHoy.x + '%' }" />
+                <span v-if="lineaHoy" class="hoy-label" :style="{ left: lineaHoy.x + '%' }">{{
+                  lineaHoy.label
+                }}</span>
                 <div
                   class="gantt-bar"
                   :class="{
@@ -248,14 +326,11 @@ const zoomHint = computed(() => {
                   }"
                   :style="barStyle(s)"
                   :title="STATUS_LABELS[s.status]"
-                ></div>
+                />
                 <span
                   v-if="s.fechaRequerida"
                   class="deadline-marker"
-                  :style="{
-                    left:
-                      ((new Date(s.fechaRequerida).getTime() - rango!.min) / rango!.span) * 100 + '%',
-                  }"
+                  :style="marcadorRequeridaStyle(s)"
                   title="Fecha requerida"
                 />
               </div>
@@ -263,10 +338,13 @@ const zoomHint = computed(() => {
           </div>
         </div>
         <p class="gantt-legend">
-          <span class="legend-swatch solid" /> Con fecha de entrega
-          <span class="legend-swatch dashed" /> Sin fecha de entrega
-          <span class="legend-swatch overdue" /> Vencida
-          <span class="legend-deadline" /> Marcador: fecha requerida
+          <span v-for="st in ESTADOS_GANTT_LEYENDA" :key="st" class="legend-estado">
+            <span :class="['legend-dot', `legend-dot--${st.toLowerCase()}`]" />
+            {{ STATUS_LABELS[st] }}
+          </span>
+          <span class="legend-swatch dashed" /> Sin fecha de entrega (creación → fecha requerida)
+          <span class="legend-swatch overdue" /> Tramo vencido
+          <span class="legend-deadline" /> Fecha requerida (◇)
         </p>
       </div>
     </div>
@@ -384,8 +462,30 @@ const zoomHint = computed(() => {
   color: #64748b;
 }
 
+.head-sub {
+  display: block;
+  font-weight: 500;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-top: 0.15rem;
+}
+
+.gantt-analista-area {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.gantt-analista-area.sin-asignar {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.track-col-padded {
+  padding-right: 6%;
+}
+
 .gantt-label-col {
-  width: 220px;
+  width: 260px;
   flex-shrink: 0;
   padding: 0.5rem 0.75rem;
   display: flex;
@@ -455,13 +555,37 @@ const zoomHint = computed(() => {
   border-color: #7c3aed;
 }
 
+.hoy-line {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 0;
+  border-left: 2px dashed var(--bnb-green, #26b460);
+  transform: translateX(-1px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hoy-label {
+  position: absolute;
+  top: -2px;
+  transform: translate(-50%, -100%);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--bnb-green, #26b460);
+  white-space: nowrap;
+  z-index: 3;
+}
+
 .deadline-marker {
   position: absolute;
-  top: 6px;
-  width: 2px;
-  height: 32px;
-  background: #ef4444;
-  transform: translateX(-1px);
+  top: 16px;
+  width: 9px;
+  height: 9px;
+  background: #e2e8f0;
+  border: 2px solid #94a3b8;
+  transform: translateX(-50%) rotate(45deg);
+  z-index: 2;
 }
 
 .gantt-legend {
@@ -497,14 +621,39 @@ const zoomHint = computed(() => {
   background: #ef4444;
 }
 
-.legend-deadline::before {
-  content: '';
+.legend-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
   display: inline-block;
-  width: 2px;
-  height: 14px;
-  background: #ef4444;
+}
+
+.legend-dot--registrada {
+  background: #38bdf8;
+}
+
+.legend-dot--en_analisis {
+  background: #fbbf24;
+}
+
+.legend-dot--en_revision_coordinacion {
+  background: #c4b5fd;
+}
+
+.legend-dot--aprobada {
+  background: var(--bnb-green);
+}
+
+.legend-deadline::before {
+  content: '◇';
   margin-right: 0.35rem;
-  vertical-align: middle;
+  color: #64748b;
 }
 
 .loading-state,

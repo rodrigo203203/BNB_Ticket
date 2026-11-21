@@ -29,9 +29,14 @@ export type PersonaCargaDto = {
 export class EquipoCargaService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Spark M11: el analista solo accede a su propia fila; coordinador/admin ven el equipo. */
   private assertPuedeVerCargaEquipo(user: UserSummary) {
-    if (user.role !== Role.COORDINADOR && user.role !== Role.ADMINISTRADOR) {
-      throw new ForbiddenException('Solo coordinador o administrador pueden ver la carga del equipo');
+    const permitido =
+      user.role === Role.ANALISTA ||
+      user.role === Role.COORDINADOR ||
+      user.role === Role.ADMINISTRADOR;
+    if (!permitido) {
+      throw new ForbiddenException('No tiene permisos para ver la carga del equipo');
     }
   }
 
@@ -73,10 +78,13 @@ export class EquipoCargaService {
     this.assertPuedeVerCargaEquipo(user);
 
     const rolesAsignables = [Role.ANALISTA, Role.COORDINADOR, Role.ADMINISTRADOR];
-    const whereUsers: { isActive: boolean; role: { in: Role[] } } = {
+    const whereUsers: { isActive: boolean; role: { in: Role[] }; id?: string } = {
       isActive: true,
       role: { in: rolesAsignables },
     };
+    if (user.role === Role.ANALISTA) {
+      whereUsers.id = user.id;
+    }
 
     const personas = await this.prisma.user.findMany({
       where: whereUsers,
@@ -133,7 +141,8 @@ export class EquipoCargaService {
       };
     });
 
-    filas.sort((a, b) => a.puntosCarga - b.puntosCarga);
+    // Vista principal: mayor carga primero (Spark M10); el modal de asignación usa /users/assignable (asc).
+    filas.sort((a, b) => b.puntosCarga - a.puntosCarga);
 
     const activasTotales = filas.reduce((a, f) => a + f.activas, 0);
     const vencidasTotales = filas.reduce((a, f) => a + f.vencidas, 0);

@@ -76,3 +76,41 @@ export function fechaCalendarioToIso(fecha: Date): string {
   const d = String(fecha.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}T12:00:00.000Z`;
 }
+
+const OPCIONES_FECHA_LA_PAZ: Intl.DateTimeFormatOptions = {
+  timeZone: ZONA_FECHA_SOLICITUD,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+};
+
+/** Fecha calendario dd/mm/aaaa en America/La_Paz (Spark M13). */
+export function formatearFechaCalendarioLaPaz(iso: string | Date | null | undefined): string {
+  if (!iso) return '—';
+  const d = typeof iso === 'string' ? new Date(iso) : iso;
+  if (Number.isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat('es-BO', OPCIONES_FECHA_LA_PAZ).format(d);
+}
+
+/** Fecha y hora dd/mm/aaaa HH:mm en America/La_Paz, sin segundos (Spark M13). */
+export function formatearFechaHoraLaPaz(iso: string | Date | null | undefined): string {
+  if (!iso) return '—';
+  const d = typeof iso === 'string' ? new Date(iso) : iso;
+  if (Number.isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat('es-BO', {
+    ...OPCIONES_FECHA_LA_PAZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).format(d);
+}
+
+/** Marca temporal al mediodía UTC del día calendario actual en La Paz (útil para Gantt M8). */
+export function instanteMediodiaCalendarioLaPaz(isoDia: string): number {
+  return new Date(`${isoDia}T12:00:00.000Z`).getTime();
+}
+
+/** Inicio lógico del día «hoy» en America/La_Paz. */
+export function inicioDiaHoyLaPaz(ahora: Date = new Date()): number {
+  return instanteMediodiaCalendarioLaPaz(obtenerDiaCalendarioEnZona(ahora));
+}

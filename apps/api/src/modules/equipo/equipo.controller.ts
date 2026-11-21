@@ -15,9 +15,10 @@ export class EquipoController {
   constructor(private readonly equipoCargaService: EquipoCargaService) {}
 
   @Get('carga')
-  @Roles(Role.COORDINADOR, Role.ADMINISTRADOR)
+  @Roles(Role.ANALISTA, Role.COORDINADOR, Role.ADMINISTRADOR)
   @ApiOperation({
-    summary: 'Carga del equipo (boceto 04): solo coordinador y administrador',
+    summary:
+      'Carga del equipo: coordinador/admin ven todo; analista solo su fila (Spark M11)',
   })
   obtenerCarga(@CurrentUser() user: UserSummary) {
     return this.equipoCargaService.obtenerCargaEquipo(user);

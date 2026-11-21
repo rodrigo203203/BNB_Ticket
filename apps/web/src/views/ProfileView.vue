@@ -7,7 +7,11 @@ import Tag from 'primevue/tag';
 import Divider from 'primevue/divider';
 import AppLayout from '../layouts/AppLayout.vue';
 import { useAuthStore } from '../stores/auth.store';
-import { ROLE_LABELS } from '@bnb/shared';
+import {
+  ROLE_LABELS,
+  formatearFechaHoraLaPaz,
+  formatearFechaCalendarioLaPaz,
+} from '@bnb/shared';
 import { resolveAvatarSrc } from '../utils/avatar';
 
 const authStore = useAuthStore();
@@ -295,7 +299,7 @@ async function handleChangePassword() {
               <small>Último acceso</small>
               <strong>{{
                 authStore.user?.lastLoginAt
-                  ? new Date(authStore.user.lastLoginAt).toLocaleString()
+                  ? formatearFechaHoraLaPaz(authStore.user.lastLoginAt)
                   : 'Sesión actual'
               }}</strong>
             </div>
@@ -303,7 +307,7 @@ async function handleChangePassword() {
               <small>Alta en plataforma</small>
               <strong>{{
                 authStore.user?.createdAt
-                  ? new Date(authStore.user.createdAt).toLocaleDateString()
+                  ? formatearFechaCalendarioLaPaz(authStore.user.createdAt)
                   : '—'
               }}</strong>
             </div>
