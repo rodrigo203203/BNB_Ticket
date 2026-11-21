@@ -804,15 +804,31 @@ const zoomHint = computed(() => {
 
 /* S6: scroll horizontal en móvil con primera columna fija */
 @media (max-width: 1024px) {
+  .gantt-shell {
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .gantt-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .gantt-label-col {
     position: sticky;
     left: 0;
     z-index: 3;
     background: #fff;
     box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.12);
+    width: 148px;
+    min-width: 148px;
+    max-width: 168px;
   }
   .gantt-row-head .gantt-label-col {
     z-index: 4;
+  }
+  .gantt-title {
+    max-width: 140px;
   }
 }
 </style>
