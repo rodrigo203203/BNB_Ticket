@@ -8,7 +8,6 @@ export type BnbTestEnvInicial = {
 };
 
 declare global {
-  // eslint-disable-next-line no-var
   var __BNB_TEST_ENV_INICIAL__: BnbTestEnvInicial | undefined;
 }
 
