@@ -1,6 +1,8 @@
 import {
   esFechaRequeridaPosteriorAHoy,
   evaluarEstadoPlazo,
+  inicioDiaHoyLaPaz,
+  instanteCalendarioLaPaz,
   obtenerDiaCalendarioEnZona,
   ZONA_FECHA_SOLICITUD,
 } from '@bnb/shared';
@@ -32,5 +34,15 @@ describe('fechas-solicitud (America/La_Paz)', () => {
     expect(
       evaluarEstadoPlazo('2026-12-10T12:00:00.000Z', '2026-12-11T12:00:00.000Z'),
     ).toBe('atraso');
+  });
+
+  it('cerca de medianoche UTC: «hoy» sigue siendo el día La Paz (no el día UTC)', () => {
+    /** 03:30Z del 21/11 = 23:30 del 20/11 en La Paz (UTC−4). */
+    const instante = new Date('2026-11-21T03:30:00.000Z');
+    expect(obtenerDiaCalendarioEnZona(instante)).toBe('2026-11-20');
+    expect(inicioDiaHoyLaPaz(instante)).toBe(instanteCalendarioLaPaz('2026-11-20T12:00:00.000Z'));
+    expect(instanteCalendarioLaPaz('2026-11-21T03:30:00.000Z')).toBe(
+      instanteCalendarioLaPaz('2026-11-20T12:00:00.000Z'),
+    );
   });
 });

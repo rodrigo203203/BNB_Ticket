@@ -114,3 +114,54 @@ export function instanteMediodiaCalendarioLaPaz(isoDia: string): number {
 export function inicioDiaHoyLaPaz(ahora: Date = new Date()): number {
   return instanteMediodiaCalendarioLaPaz(obtenerDiaCalendarioEnZona(ahora));
 }
+
+const MS_DIA = 86_400_000;
+
+/** Posición Gantt: ancla al día calendario en La Paz (mediodía UTC estable). */
+export function instanteCalendarioLaPaz(iso: string | Date): number {
+  const d = typeof iso === 'string' ? new Date(iso) : iso;
+  if (Number.isNaN(d.getTime())) return Number.NaN;
+  return instanteMediodiaCalendarioLaPaz(obtenerDiaCalendarioEnZona(d));
+}
+
+/** Desplaza un día calendario YYYY-MM-DD en La Paz. */
+export function desplazarDiaCalendarioLaPaz(isoDia: string, deltaDias: number): string {
+  const base = instanteMediodiaCalendarioLaPaz(isoDia);
+  return obtenerDiaCalendarioEnZona(new Date(base + deltaDias * MS_DIA));
+}
+
+/** Lunes de la semana del instante (día calendario La Paz). */
+export function inicioSemanaCalendarioLaPaz(refMs: number): number {
+  let t = refMs;
+  for (let i = 0; i < 7; i++) {
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone: ZONA_FECHA_SOLICITUD,
+      weekday: 'short',
+    }).format(new Date(t));
+    if (weekday === 'Mon') {
+      return instanteMediodiaCalendarioLaPaz(obtenerDiaCalendarioEnZona(new Date(t)));
+    }
+    t -= MS_DIA;
+  }
+  return refMs;
+}
+
+/** Primer día del mes calendario en La Paz. */
+export function inicioMesCalendarioLaPaz(refMs: number): number {
+  const dia = obtenerDiaCalendarioEnZona(new Date(refMs));
+  return instanteMediodiaCalendarioLaPaz(`${dia.slice(0, 7)}-01`);
+}
+
+/** Último día del mes calendario en La Paz (fin inclusive = mediodía último día). */
+export function finMesCalendarioLaPaz(refMs: number): number {
+  const dia = obtenerDiaCalendarioEnZona(new Date(refMs));
+  const parts = dia.split('-').map(Number);
+  const y = parts[0] ?? 1970;
+  const m = parts[1] ?? 1;
+  const primerSiguiente =
+    m === 12
+      ? `${y + 1}-01-01`
+      : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+  const ultimo = desplazarDiaCalendarioLaPaz(primerSiguiente, -1);
+  return instanteMediodiaCalendarioLaPaz(ultimo);
+}

@@ -65,6 +65,7 @@ import '@fontsource/inter/700.css';
 import App from './App.vue';
 import { router } from './router';
 import { BnbPreset } from './theme/bnb-preset';
+import { localePrimeVueEs } from './locale/primevue-es';
 import './assets/main.css';
 import './assets/responsive.css';
 
@@ -124,6 +125,7 @@ const app = createApp(App);
 app.use(createPinia());
 app.use(router);
 app.use(PrimeVue, {
+  locale: localePrimeVueEs,
   theme: {
     preset: BnbPreset,
     options: {

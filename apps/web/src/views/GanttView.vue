@@ -11,7 +11,12 @@ import {
   RequestStatus,
   Role,
   GANTT_FIN_BARRA_SIN_ENTREGA,
+  ZONA_FECHA_SOLICITUD,
   inicioDiaHoyLaPaz,
+  instanteCalendarioLaPaz,
+  inicioSemanaCalendarioLaPaz,
+  inicioMesCalendarioLaPaz,
+  finMesCalendarioLaPaz,
   formatearFechaCalendarioLaPaz,
 } from '@bnb/shared';
 
@@ -108,43 +113,49 @@ watch([filtroAnalistas, filtroAreas, filtroEstados], () => {
   void cargar();
 });
 
-function startOfLocalDay(t: number) {
-  const d = new Date(t);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+function msCreacion(s: SolicitudGanttItem): number {
+  return instanteCalendarioLaPaz(s.createdAt);
 }
 
-/** Lunes como inicio de semana (es-BO). */
-function startOfLocalWeek(t: number) {
-  const d = new Date(t);
-  const day = d.getDay();
-  const diff = day === 0 ? 6 : day - 1;
-  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff);
-  return monday.getTime();
+function msFechaRequerida(s: SolicitudGanttItem): number | null {
+  return s.fechaRequerida ? instanteCalendarioLaPaz(s.fechaRequerida) : null;
 }
 
-function startOfLocalMonth(t: number) {
-  const d = new Date(t);
-  return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+function etiquetaEjeLaPaz(t: number, tipo: 'dayWeek' | 'month'): string {
+  if (tipo === 'month') {
+    return new Intl.DateTimeFormat('es-BO', {
+      timeZone: ZONA_FECHA_SOLICITUD,
+      month: 'short',
+      day: 'numeric',
+    }).format(new Date(t));
+  }
+  return new Intl.DateTimeFormat('es-BO', {
+    timeZone: ZONA_FECHA_SOLICITUD,
+    weekday: 'short',
+    day: 'numeric',
+  }).format(new Date(t));
 }
 
-function endOfLocalMonth(t: number) {
-  const d = new Date(t);
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+/** Vencida sin entrega: tramo rojo fecha requerida → hoy. */
+function muestraTramoVencido(s: SolicitudGanttItem): boolean {
+  return s.vencida && !s.fechaEntrega && Boolean(s.fechaRequerida);
 }
 
 const rango = computed(() => {
   if (!items.value.length) return null;
 
+  const hoy = inicioDiaHoyLaPaz();
   let dataMin = Infinity;
   let dataMax = -Infinity;
-  const hoy = inicioDiaHoyLaPaz();
+
   for (const s of items.value) {
-    const start = new Date(s.createdAt).getTime();
+    const start = msCreacion(s);
     const end = finBarraMs(s);
-    dataMin = Math.min(dataMin, start, end);
-    dataMax = Math.max(dataMax, start, end);
-    if (s.fechaRequerida) {
-      dataMax = Math.max(dataMax, new Date(s.fechaRequerida).getTime());
+    const req = msFechaRequerida(s);
+    dataMin = Math.min(dataMin, start, end, req ?? Infinity);
+    dataMax = Math.max(dataMax, start, end, req ?? -Infinity);
+    if (muestraTramoVencido(s)) {
+      dataMax = Math.max(dataMax, hoy);
     }
   }
   dataMax = Math.max(dataMax, hoy);
@@ -153,22 +164,34 @@ const rango = computed(() => {
   let max: number;
 
   if (zoom.value === 'day') {
-    min = startOfLocalDay(dataMin);
+    min = instanteCalendarioLaPaz(new Date(dataMin));
     max = min + 14 * DAY_MS;
     if (dataMax > max) {
-      max = startOfLocalDay(dataMax) + DAY_MS;
+      max = instanteCalendarioLaPaz(new Date(dataMax)) + DAY_MS;
       min = max - 14 * DAY_MS;
     }
   } else if (zoom.value === 'week') {
-    min = startOfLocalWeek(dataMin);
+    min = inicioSemanaCalendarioLaPaz(hoy);
     max = min + 7 * DAY_MS;
-    while (dataMax > max) {
-      min += 7 * DAY_MS;
-      max += 7 * DAY_MS;
+    if (dataMin < min) {
+      min = inicioSemanaCalendarioLaPaz(dataMin);
+    }
+    if (dataMax > max) {
+      max = instanteCalendarioLaPaz(new Date(dataMax)) + DAY_MS;
+    }
+    if (hoy < min || hoy >= max) {
+      min = inicioSemanaCalendarioLaPaz(hoy);
+      max = min + 7 * DAY_MS;
     }
   } else {
-    min = startOfLocalMonth(dataMin);
-    max = endOfLocalMonth(dataMax);
+    min = inicioMesCalendarioLaPaz(hoy);
+    max = finMesCalendarioLaPaz(hoy);
+    if (dataMin < min) {
+      min = inicioMesCalendarioLaPaz(dataMin);
+    }
+    if (dataMax > max) {
+      max = finMesCalendarioLaPaz(dataMax);
+    }
     if (max - min < 7 * DAY_MS) {
       max = min + 31 * DAY_MS;
     }
@@ -190,7 +213,7 @@ const ticks = computed(() => {
       if (t > max) break;
       out.push({
         x: ((t - min) / span) * 100,
-        label: new Date(t).toLocaleDateString('es-BO', { weekday: 'short', day: 'numeric' }),
+        label: etiquetaEjeLaPaz(t, 'dayWeek'),
       });
     }
     return out;
@@ -201,7 +224,7 @@ const ticks = computed(() => {
       const t = min + i * DAY_MS;
       out.push({
         x: (i / 6) * 100,
-        label: new Date(t).toLocaleDateString('es-BO', { weekday: 'short', day: 'numeric' }),
+        label: etiquetaEjeLaPaz(t, 'dayWeek'),
       });
     }
     return out;
@@ -212,7 +235,7 @@ const ticks = computed(() => {
     const t = min + ((max - min) * i) / steps;
     out.push({
       x: (i / steps) * 100,
-      label: new Date(t).toLocaleDateString('es-BO', { month: 'short', day: 'numeric' }),
+      label: etiquetaEjeLaPaz(t, 'month'),
     });
   }
   return out;
@@ -220,20 +243,21 @@ const ticks = computed(() => {
 
 /** Spark M8: sin entrega, barra punteada hasta fecha requerida (o hoy si faltara dato). */
 function finBarraMs(s: SolicitudGanttItem): number {
+  const cre = msCreacion(s);
   if (s.fechaEntrega) {
-    const ent = new Date(s.fechaEntrega).getTime();
-    const cre = new Date(s.createdAt).getTime();
+    const ent = instanteCalendarioLaPaz(s.fechaEntrega);
     if (ent >= cre) return ent;
   }
+  if (muestraTramoVencido(s)) {
+    return msFechaRequerida(s) ?? inicioDiaHoyLaPaz();
+  }
   if (GANTT_FIN_BARRA_SIN_ENTREGA === 'fecha_requerida' && s.fechaRequerida) {
-    return new Date(s.fechaRequerida).getTime();
+    return instanteCalendarioLaPaz(s.fechaRequerida);
   }
   if (GANTT_FIN_BARRA_SIN_ENTREGA === 'hoy') {
     return inicioDiaHoyLaPaz();
   }
-  return s.fechaRequerida
-    ? new Date(s.fechaRequerida).getTime()
-    : inicioDiaHoyLaPaz();
+  return s.fechaRequerida ? instanteCalendarioLaPaz(s.fechaRequerida) : inicioDiaHoyLaPaz();
 }
 
 function pctEnRango(t: number): number {
@@ -243,26 +267,38 @@ function pctEnRango(t: number): number {
   return Math.min(Math.max(raw, 0), usable);
 }
 
-/** Barra recortada al rango visible: si la creación queda antes del zoom, arranca en el borde izquierdo. */
-function barStyle(s: SolicitudGanttItem) {
-  if (!rango.value) return {};
+/** Segmento recortado al rango visible (M13: posiciones en calendario La Paz). */
+function barStyleRango(startMs: number, endMs: number, minWidth = 1.2) {
+  if (!rango.value) return { display: 'none' };
   const { min, max } = rango.value;
-  const start = new Date(s.createdAt).getTime();
-  const end = finBarraMs(s);
+  if (endMs <= startMs) return { display: 'none' };
 
-  const visStart = Math.max(start, min);
-  const visEnd = Math.min(end, max);
-  if (visEnd <= min) {
+  const visStart = Math.max(startMs, min);
+  const visEnd = Math.min(endMs, max);
+  if (visEnd <= visStart && visEnd <= min) {
+    return { display: 'none' };
+  }
+  if (visEnd <= min || visStart >= max) {
     return { display: 'none' };
   }
 
-  let leftPct = start < min ? 0 : pctEnRango(visStart);
-  const endPct = pctEnRango(visEnd);
-  const widthPct = Math.max(endPct - leftPct, s.sinFechaEntrega ? 1.8 : 1.2);
+  const leftPct = startMs < min ? 0 : pctEnRango(visStart);
+  const endPct = pctEnRango(Math.min(visEnd, max));
+  const widthPct = Math.max(endPct - leftPct, minWidth);
   return {
     left: `${leftPct}%`,
     width: `${widthPct}%`,
   };
+}
+
+function barStyle(s: SolicitudGanttItem) {
+  return barStyleRango(msCreacion(s), finBarraMs(s), s.sinFechaEntrega ? 1.8 : 1.2);
+}
+
+function barStyleTramoVencido(s: SolicitudGanttItem) {
+  const req = msFechaRequerida(s);
+  if (!req) return { display: 'none' };
+  return barStyleRango(req, inicioDiaHoyLaPaz(), 1.2);
 }
 
 const lineaHoy = computed(() => {
@@ -277,7 +313,7 @@ const lineaHoy = computed(() => {
 
 function marcadorRequeridaStyle(s: SolicitudGanttItem) {
   if (!rango.value || !s.fechaRequerida) return {};
-  return { left: `${pctEnRango(new Date(s.fechaRequerida).getTime())}%` };
+  return { left: `${pctEnRango(instanteCalendarioLaPaz(s.fechaRequerida))}%` };
 }
 
 function etiquetaAnalistaArea(s: SolicitudGanttItem): string {
@@ -292,8 +328,8 @@ function analistaSinAsignar(s: SolicitudGanttItem): boolean {
 
 const zoomHint = computed(() => {
   if (!rango.value) return '';
-  const a = new Date(rango.value.min).toLocaleDateString('es-BO');
-  const b = new Date(rango.value.max).toLocaleDateString('es-BO');
+  const a = formatearFechaCalendarioLaPaz(new Date(rango.value.min));
+  const b = formatearFechaCalendarioLaPaz(new Date(rango.value.max));
   return `Vista ${ZOOM_LABELS[zoom.value].toLowerCase()}: ${a} — ${b}`;
 });
 </script>
@@ -366,6 +402,7 @@ const zoomHint = computed(() => {
             placeholder="Activas"
             display="chip"
             :max-selected-labels="2"
+            selected-items-label="{0} estados"
             class="filtro-multiselect"
           />
         </div>
@@ -398,6 +435,13 @@ const zoomHint = computed(() => {
                   >
                     {{ t.label }}
                   </span>
+                  <span
+                    v-if="lineaHoy"
+                    class="hoy-label hoy-label--head"
+                    :style="{ left: lineaHoy.x + '%' }"
+                  >
+                    {{ lineaHoy.label }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -420,10 +464,21 @@ const zoomHint = computed(() => {
               </div>
               <div class="gantt-track-col track-col-padded">
                 <span v-if="lineaHoy" class="hoy-line" :style="{ left: lineaHoy.x + '%' }" />
-                <span v-if="lineaHoy" class="hoy-label" :style="{ left: lineaHoy.x + '%' }">{{
-                  lineaHoy.label
-                }}</span>
+                <template v-if="muestraTramoVencido(s)">
+                  <div
+                    class="gantt-bar gantt-bar--dashed"
+                    :class="'gantt-bar--' + s.status.toLowerCase()"
+                    :style="barStyle(s)"
+                    :title="STATUS_LABELS[s.status]"
+                  />
+                  <div
+                    class="gantt-bar gantt-bar--vencida gantt-bar--overdue-trail"
+                    :style="barStyleTramoVencido(s)"
+                    title="Tramo vencido"
+                  />
+                </template>
                 <div
+                  v-else
                   class="gantt-bar"
                   :class="{
                     'gantt-bar--dashed': s.sinFechaEntrega && !s.vencida,
@@ -707,6 +762,15 @@ const zoomHint = computed(() => {
   color: var(--bnb-green, #26b460);
   white-space: nowrap;
   z-index: 3;
+}
+
+.hoy-label--head {
+  top: 0;
+  transform: translate(-50%, 0);
+}
+
+.gantt-bar--overdue-trail {
+  z-index: 1;
 }
 
 .deadline-marker {

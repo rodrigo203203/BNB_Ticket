@@ -22,6 +22,27 @@ function diaUtc(y: number, m: number, d: number) {
   return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
 }
 
+const ZONA_DEMO = 'America/La_Paz';
+
+function diaCalendarioLaPaz(ref: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONA_DEMO,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(ref);
+}
+
+/** Mediodía UTC del día calendario en La Paz (alineado con @bnb/shared M13). */
+function desdeDiaLaPaz(isoDia: string): Date {
+  return new Date(`${isoDia}T12:00:00.000Z`);
+}
+
+function diaRelativoLaPaz(deltaDias: number, ref: Date = new Date()): Date {
+  const hoy = diaCalendarioLaPaz(ref);
+  return new Date(desdeDiaLaPaz(hoy).getTime() + deltaDias * 86_400_000);
+}
+
 async function main() {
   if (process.env.NODE_ENV === 'production') {
     console.error('❌ seed-demo no puede ejecutarse en producción (NODE_ENV=production).');
@@ -158,8 +179,9 @@ async function main() {
       requesterArea: 'Gerencia de Riesgos Crediticios',
       justification: 'Requerimiento normativo regulatorio trimestral de la ASFI.',
       estimatedHours: 16,
-      fechaRequerida: diaUtc(2026, 11, 28),
+      fechaRequerida: diaRelativoLaPaz(8),
       fechaEntrega: null,
+      createdAt: diaRelativoLaPaz(-6),
     },
   });
 
@@ -213,8 +235,9 @@ async function main() {
       requesterArea: 'Finanzas y Planificación',
       justification: 'Monitoreo de metas comerciales del primer semestre.',
       estimatedHours: 24,
-      fechaRequerida: diaUtc(2026, 11, 15),
-      fechaEntrega: diaUtc(2026, 11, 18),
+      fechaRequerida: diaRelativoLaPaz(-5),
+      fechaEntrega: diaRelativoLaPaz(-2),
+      createdAt: diaRelativoLaPaz(-18),
     },
   });
 
@@ -285,8 +308,9 @@ async function main() {
       assignedAnalystId: null,
       requesterArea: 'Finanzas y Planificación',
       justification: 'Auditoría financiera anual.',
-      fechaRequerida: diaUtc(2026, 11, 10),
+      fechaRequerida: diaRelativoLaPaz(-10),
       fechaEntrega: null,
+      createdAt: diaRelativoLaPaz(-22),
     },
   });
 
@@ -302,9 +326,10 @@ async function main() {
 
   /** Carga ALTA para Rodrigo (≥21 puntos) + mezcla vencida / por vencer / sin entrega en Gantt. */
   const hoy = new Date();
-  const y = hoy.getUTCFullYear();
-  const m = hoy.getUTCMonth() + 1;
   for (let i = 0; i < 6; i++) {
+    const vencidaSinEntrega = i % 2 === 0;
+    const fechaRequerida = vencidaSinEntrega ? diaRelativoLaPaz(-8, hoy) : diaRelativoLaPaz(3, hoy);
+    const createdAt = vencidaSinEntrega ? diaRelativoLaPaz(-20, hoy) : diaRelativoLaPaz(-5, hoy);
     await prisma.solicitud.create({
       data: {
         code: `REQ-2026-9${100 + i}`,
@@ -316,14 +341,17 @@ async function main() {
         requesterId: solicitante2.id,
         assignedAnalystId: analista1.id,
         requesterArea: 'Finanzas y Planificación',
-        fechaRequerida: i % 2 === 0 ? diaUtc(y, m, Math.max(1, hoy.getUTCDate() - 10)) : diaUtc(y, m, hoy.getUTCDate() + 3),
-        /** 9100/9101/9103/9105 sin entrega (barra punteada hasta fecha requerida). */
+        fechaRequerida,
+        /** 9100/9101/9103/9105 sin entrega (barra punteada + tramo rojo si vencida). */
         fechaEntrega: [0, 1, 3, 5].includes(i)
           ? null
-          : diaUtc(y, m, Math.max(1, hoy.getUTCDate() - 1)),
+          : diaRelativoLaPaz(-1, hoy),
+        createdAt,
       },
     });
   }
+
+  const [y, m] = diaCalendarioLaPaz(hoy).split('-').map(Number);
 
   /** No deben aparecer en Gantt (rechazada / cancelada). */
   await prisma.solicitud.createMany({
