@@ -1,0 +1,29 @@
+# Reglas del agente — BNB_Ticket
+
+## Primero
+
+1. Leer **CONTEXTO.md** en la raíz antes de cualquier cambio.
+2. No leer archivos o rutas listados en **.cursorignore** (ver también `rules/ignore-rules.md` para el razonamiento).
+
+## Git y despliegue
+
+- **Una rama por tarea.** Nunca commitear ni fusionar en `main` sin PR aprobado por Rodrigo.
+- **Sin deploy** ni publicación a producción sin aprobación explícita de Rodrigo.
+- Al terminar una tarea, actualizar **CONTEXTO.md** (Estado, Decisiones, Pendientes).
+
+## Código
+
+- Código limpio y modular.
+- Comentarios técnicos y de negocio **en español** cuando aporten claridad.
+- Documentación en **español**.
+- Respetar convenciones del monorepo (`apps/*`, `packages/*`, `@bnb/shared`).
+
+## Contexto y tokens
+
+- Priorizar fuentes en `src/`, no `dist/`.
+- Versiones de dependencias: `package.json` de cada paquete, no lockfiles ni `node_modules`.
+- Estructura: listados ligeros antes de abrir muchos archivos.
+
+## Duplicación con `rules/`
+
+El directorio `rules/` documenta exclusiones de contexto. Este archivo es la fuente operativa para Cursor; el detalle ampliado sigue en `rules/ignore-rules.md`.
