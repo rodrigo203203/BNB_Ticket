@@ -250,7 +250,13 @@ onMounted(() => {
           <input type="file" accept=".csv,text/csv" @change="onCsvSelected" />
           <button type="button" class="btn-secondary" :disabled="!csvFile" @click="previewCsv">Vista previa</button>
           <button type="button" class="btn-primary" :disabled="!canConfirmCsv || csvImporting" @click="confirmCsvImport">
-            {{ csvImporting ? 'Importando...' : 'Confirmar creación' }}
+            {{
+              csvImporting
+                ? 'Importando...'
+                : csvPreview?.validRows.length
+                  ? `Crear ${csvPreview.validRows.length} usuario(s) válidos`
+                  : 'Confirmar creación'
+            }}
           </button>
         </div>
         <p v-if="csvMessage" class="csv-message">{{ csvMessage }}</p>

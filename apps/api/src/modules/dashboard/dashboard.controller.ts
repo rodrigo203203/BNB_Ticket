@@ -1,9 +1,10 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserSummary } from '@bnb/shared';
+import { DashboardAnalisisQueryDto } from './dto/dashboard-analisis-query.dto';
 
 @ApiTags('Dashboard y Métricas por Rol')
 @ApiBearerAuth()
@@ -23,7 +24,7 @@ export class DashboardController {
     summary:
       'Panel analítico operativo (coord/admin todo el universo; analista solo asignadas; solicitante 403)',
   })
-  async getAnalisis(@CurrentUser() user: UserSummary) {
-    return this.dashboardService.getAnalisisForUser(user);
+  async getAnalisis(@CurrentUser() user: UserSummary, @Query() query: DashboardAnalisisQueryDto) {
+    return this.dashboardService.getAnalisisForUser(user, query);
   }
 }

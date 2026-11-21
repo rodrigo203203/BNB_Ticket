@@ -23,6 +23,7 @@ export type PersonaCargaDto = {
   proximaFechaEntrega: string | null;
   proximaSolicitudCodigo: string | null;
   proximaSolicitudId: string | null;
+  proximaEntregaAtrasada: boolean;
 };
 
 @Injectable()
@@ -138,6 +139,7 @@ export class EquipoCargaService {
         proximaFechaEntrega: res.proximaFechaEntrega,
         proximaSolicitudCodigo: res.proximaSolicitudCodigo,
         proximaSolicitudId: res.proximaSolicitudId,
+        proximaEntregaAtrasada: res.proximaEntregaAtrasada,
       };
     });
 

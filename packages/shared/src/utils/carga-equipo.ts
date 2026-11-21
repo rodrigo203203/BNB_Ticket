@@ -123,6 +123,7 @@ export type ResumenCargaPersona = {
   proximaFechaEntrega: string | null;
   proximaSolicitudCodigo: string | null;
   proximaSolicitudId: string | null;
+  proximaEntregaAtrasada: boolean;
 };
 
 export function resumirCargaDesdeSolicitudes(
@@ -134,16 +135,42 @@ export function resumirCargaDesdeSolicitudes(
   const vencidas = activas.filter((s) => esVencidaVistaCarga(s, ahora)).length;
   const porVencer = activas.filter((s) => esPorVencerVistaCarga(s, ahora)).length;
 
+  const hoyDia = obtenerDiaCalendarioEnZona(ahora);
   let proximaFechaEntrega: string | null = null;
   let proximaSolicitudCodigo: string | null = null;
   let proximaSolicitudId: string | null = null;
+  let proximaEntregaAtrasada = false;
+
+  let mejorFuturaMs = Infinity;
+  let mejorPasadaMs = -Infinity;
   for (const s of activas) {
     if (!s.fechaEntrega) continue;
-    const iso = new Date(s.fechaEntrega).toISOString();
-    if (!proximaFechaEntrega || iso < proximaFechaEntrega) {
-      proximaFechaEntrega = iso;
-      proximaSolicitudCodigo = s.code ?? null;
-      proximaSolicitudId = s.id ?? null;
+    const ent = new Date(s.fechaEntrega);
+    const diaEnt = obtenerDiaCalendarioEnZona(ent);
+    const ms = ent.getTime();
+    if (diaEnt >= hoyDia) {
+      if (ms < mejorFuturaMs) {
+        mejorFuturaMs = ms;
+        proximaFechaEntrega = ent.toISOString();
+        proximaSolicitudCodigo = s.code ?? null;
+        proximaSolicitudId = s.id ?? null;
+        proximaEntregaAtrasada = false;
+      }
+    } else if (ms > mejorPasadaMs) {
+      mejorPasadaMs = ms;
+    }
+  }
+
+  if (!proximaFechaEntrega && mejorPasadaMs > -Infinity) {
+    const ent = new Date(mejorPasadaMs);
+    proximaFechaEntrega = ent.toISOString();
+    proximaEntregaAtrasada = true;
+    for (const s of activas) {
+      if (s.fechaEntrega && new Date(s.fechaEntrega).getTime() === mejorPasadaMs) {
+        proximaSolicitudCodigo = s.code ?? null;
+        proximaSolicitudId = s.id ?? null;
+        break;
+      }
     }
   }
 
@@ -157,5 +184,6 @@ export function resumirCargaDesdeSolicitudes(
     proximaFechaEntrega,
     proximaSolicitudCodigo,
     proximaSolicitudId,
+    proximaEntregaAtrasada,
   };
 }

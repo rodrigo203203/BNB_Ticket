@@ -13,41 +13,79 @@ import {
   DashboardAnalisisStats,
   obtenerMesCalendarioEnZona,
 } from '@bnb/shared';
-import { computarAnalisisDesdeSolicitudes } from './dashboard-analisis.util';
+import {
+  computarAnalisisDesdeSolicitudes,
+  resolverVentanaAnalisis,
+} from './dashboard-analisis.util';
+import { DashboardAnalisisQueryDto } from './dto/dashboard-analisis-query.dto';
 
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Panel analítico operativo (boceto 02); solicitante recibe 403. */
-  async getAnalisisForUser(user: UserSummary): Promise<DashboardAnalisisStats> {
+  async getAnalisisForUser(
+    user: UserSummary,
+    query: DashboardAnalisisQueryDto = {},
+  ): Promise<DashboardAnalisisStats> {
     if (user.role === Role.SOLICITANTE) {
       throw new ForbiddenException('El dashboard de análisis no está disponible para solicitantes');
     }
 
-    const where =
-      user.role === Role.ANALISTA
-        ? { assignedAnalystId: user.id }
-        : {};
+    const ventana = resolverVentanaAnalisis(query);
+    const whereRol: Record<string, unknown> =
+      user.role === Role.ANALISTA ? { assignedAnalystId: user.id } : {};
+    const whereConsulta = { ...whereRol } as Record<string, unknown>;
+    if (query.area?.trim()) {
+      whereConsulta.requesterArea = query.area.trim();
+    }
+
+    const ambitoMinimo = ventana.desdeAnterior ?? ventana.desde;
+
+    const areasRows = await this.prisma.solicitud.findMany({
+      where: whereRol,
+      distinct: ['requesterArea'],
+      select: { requesterArea: true },
+      orderBy: { requesterArea: 'asc' },
+    });
 
     const rows = await this.prisma.solicitud.findMany({
-      where,
+      where: {
+        ...whereConsulta,
+        createdAt: { gte: ambitoMinimo, lte: ventana.hasta },
+      },
       select: {
         status: true,
         category: true,
         fechaRequerida: true,
         fechaEntrega: true,
         closedAt: true,
+        requesterArea: true,
+        createdAt: true,
+        assignedAnalystId: true,
+        assignedAnalyst: { select: { fullName: true } },
       },
     });
 
-    return computarAnalisisDesdeSolicitudes(
+    const core = computarAnalisisDesdeSolicitudes(
       rows.map((r) => ({
-        ...r,
         status: r.status as RequestStatus,
         category: r.category as RequestCategory,
+        fechaRequerida: r.fechaRequerida,
+        fechaEntrega: r.fechaEntrega,
+        closedAt: r.closedAt,
+        requesterArea: r.requesterArea,
+        createdAt: r.createdAt,
+        assignedAnalystId: r.assignedAnalystId,
+        assignedAnalystName: r.assignedAnalyst?.fullName ?? null,
       })),
+      ventana,
     );
+
+    return {
+      ...core,
+      areasDisponibles: areasRows.map((a) => a.requesterArea),
+    };
   }
 
   async getMetricsForUser(user: UserSummary): Promise<DashboardStats> {

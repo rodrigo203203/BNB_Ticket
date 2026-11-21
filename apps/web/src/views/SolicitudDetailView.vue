@@ -3,6 +3,7 @@ import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import DatePicker from 'primevue/datepicker';
 import Button from 'primevue/button';
+import Tag from 'primevue/tag';
 import AppLayout from '../layouts/AppLayout.vue';
 import SolicitudAdjuntosPanel from '../components/SolicitudAdjuntosPanel.vue';
 import { apiClient } from '../api/client';
@@ -18,6 +19,8 @@ import {
   fechaCalendarioToIso,
   EncargadoConCarga,
   ROLE_LABELS,
+  STATUS_BADGE_SEVERITY,
+  PRIORITY_LABELS,
   descripcionEstadoPlazoUi,
   formatearFechaCalendarioLaPaz,
   formatearFechaHoraLaPaz,
@@ -266,13 +269,9 @@ onMounted(() => {
           <div class="header-main">
             <div class="badges-row">
               <span class="ticket-code">{{ solicitud.code }}</span>
-              <span :class="['badge-status', solicitud.status.toLowerCase()]">
-                {{ STATUS_LABELS[solicitud.status] }}
-              </span>
-              <span :class="['priority-pill', solicitud.priority.toLowerCase()]">
-                {{ solicitud.priority }}
-              </span>
-              <span class="category-tag">{{ CATEGORY_LABELS[solicitud.category] }}</span>
+              <Tag :value="STATUS_LABELS[solicitud.status]" :severity="STATUS_BADGE_SEVERITY[solicitud.status]" />
+              <Tag :value="PRIORITY_LABELS[solicitud.priority]" severity="warn" />
+              <Tag :value="CATEGORY_LABELS[solicitud.category]" severity="secondary" />
             </div>
             <h1 class="ticket-title">{{ solicitud.title }}</h1>
             <div class="ticket-meta">

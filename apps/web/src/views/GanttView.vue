@@ -1,21 +1,34 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AppLayout from '../layouts/AppLayout.vue';
 import { apiClient } from '../api/client';
+import { useAuthStore } from '../stores/auth.store';
 import {
   SolicitudGanttItem,
   STATUS_LABELS,
   RequestStatus,
+  Role,
   GANTT_FIN_BARRA_SIN_ENTREGA,
   inicioDiaHoyLaPaz,
   formatearFechaCalendarioLaPaz,
 } from '@bnb/shared';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const items = ref<SolicitudGanttItem[]>([]);
 const loading = ref(true);
 const errorMessage = ref('');
+
+const ESTADOS_ACTIVOS_GANTT = [
+  RequestStatus.REGISTRADA,
+  RequestStatus.EN_ANALISIS,
+  RequestStatus.EN_REVISION_COORDINACION,
+];
+
+const filtroAnalistas = ref<string[]>([]);
+const filtroAreas = ref<string[]>([]);
+const filtroEstados = ref<RequestStatus[]>([...ESTADOS_ACTIVOS_GANTT]);
 
 /** Zoom del timeline (boceto 03). */
 type ZoomGantt = 'day' | 'week' | 'month';
@@ -38,12 +51,38 @@ const ZOOM_LABELS: Record<ZoomGantt, string> = {
   month: 'Mes',
 };
 
+const opcionesAnalistas = ref<Array<{ id: string; label: string }>>([]);
+const opcionesAreas = ref<string[]>([]);
+
+function buildGanttParams(): Record<string, string | string[]> {
+  const params: Record<string, string | string[]> = {};
+  if (filtroAnalistas.value.length) params.analystIds = filtroAnalistas.value;
+  if (filtroAreas.value.length) params.areas = filtroAreas.value;
+  if (filtroEstados.value.length) params.statuses = filtroEstados.value;
+  return params;
+}
+
 async function cargar() {
   loading.value = true;
   errorMessage.value = '';
   try {
-    const res = await apiClient.get<any, any>('/solicitudes/gantt');
-    items.value = res.data || res || [];
+    const res = await apiClient.get<any, any>('/solicitudes/gantt', { params: buildGanttParams() });
+    const data: SolicitudGanttItem[] = res.data || res || [];
+    items.value = data;
+    if (!opcionesAnalistas.value.length) {
+      const map = new Map<string, string>();
+      for (const s of data) {
+        if (s.assignedAnalystId && s.assignedAnalystName) {
+          map.set(s.assignedAnalystId, s.assignedAnalystName);
+        }
+      }
+      opcionesAnalistas.value = Array.from(map.entries()).map(([id, label]) => ({ id, label }));
+    }
+    if (!opcionesAreas.value.length) {
+      opcionesAreas.value = [
+        ...new Set(data.map((s) => s.requesterArea).filter((a): a is string => Boolean(a))),
+      ].sort();
+    }
   } catch (err: any) {
     errorMessage.value =
       err.response?.data?.message || err.message || 'No se pudo cargar el Gantt';
@@ -52,7 +91,16 @@ async function cargar() {
   }
 }
 
-onMounted(cargar);
+onMounted(() => {
+  if (authStore.user?.role === Role.ANALISTA && authStore.user.id) {
+    filtroAnalistas.value = [authStore.user.id];
+  }
+  void cargar();
+});
+
+watch([filtroAnalistas, filtroAreas, filtroEstados], () => {
+  void cargar();
+});
 
 function startOfLocalDay(t: number) {
   const d = new Date(t);
@@ -265,6 +313,34 @@ const zoomHint = computed(() => {
         </div>
       </div>
 
+      <div v-if="!loading" class="gantt-filtros">
+        <label class="filtro-gantt">
+          <span>Analista</span>
+          <select
+            v-model="filtroAnalistas"
+            multiple
+            class="filtro-multi"
+            :disabled="authStore.user?.role === Role.ANALISTA"
+          >
+            <option v-for="o in opcionesAnalistas" :key="o.id" :value="o.id">{{ o.label }}</option>
+          </select>
+        </label>
+        <label class="filtro-gantt">
+          <span>Área</span>
+          <select v-model="filtroAreas" multiple class="filtro-multi">
+            <option v-for="a in opcionesAreas" :key="a" :value="a">{{ a }}</option>
+          </select>
+        </label>
+        <label class="filtro-gantt">
+          <span>Estado</span>
+          <select v-model="filtroEstados" multiple class="filtro-multi">
+            <option v-for="st in Object.values(RequestStatus)" :key="st" :value="st">
+              {{ STATUS_LABELS[st] }}
+            </option>
+          </select>
+        </label>
+      </div>
+
       <div v-if="loading" class="loading-state">
         <font-awesome-icon icon="spinner" spin />
         Cargando timeline…
@@ -355,6 +431,30 @@ const zoomHint = computed(() => {
 .gantt-page {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.gantt-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filtro-gantt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #64748b;
+  min-width: 160px;
+}
+
+.filtro-multi {
+  min-height: 4.5rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  padding: 0.35rem;
+  font-size: 0.85rem;
 }
 
 .gantt-header {
@@ -668,5 +768,19 @@ const zoomHint = computed(() => {
   color: #b91c1c;
   background: #fef2f2;
   border-radius: 8px;
+}
+
+/* S6: scroll horizontal en móvil con primera columna fija */
+@media (max-width: 1024px) {
+  .gantt-label-col {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: #fff;
+    box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.12);
+  }
+  .gantt-row-head .gantt-label-col {
+    z-index: 4;
+  }
 }
 </style>

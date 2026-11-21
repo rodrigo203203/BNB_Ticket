@@ -1,12 +1,15 @@
 import {
+  DashboardAnalisisCargaAnalistaRow,
+  DashboardAnalisisKpi,
   DashboardAnalisisStats,
   RequestCategory,
   RequestStatus,
-  UMBRAL_POR_VENCER_DIAS_NATURALES,
-  esSolicitudPorVencer,
   esSolicitudVencida,
   obtenerMesCalendarioEnZona,
 } from '@bnb/shared';
+import { DashboardAnalisisQueryDto } from './dto/dashboard-analisis-query.dto';
+
+const MS_DIA = 86_400_000;
 
 export type SolicitudAnalisisRow = {
   status: RequestStatus;
@@ -14,14 +17,162 @@ export type SolicitudAnalisisRow = {
   fechaRequerida: Date | null;
   fechaEntrega: Date | null;
   closedAt: Date | null;
+  requesterArea: string;
+  createdAt: Date;
+  assignedAnalystId: string | null;
+  assignedAnalystName: string | null;
 };
 
-/** Agrega métricas de análisis operativo (boceto 02) sobre el subconjunto visible al rol. */
+export type VentanaAnalisis = {
+  desde: Date;
+  hasta: Date;
+  desdeAnterior: Date | null;
+  hastaAnterior: Date | null;
+  clave: '7d' | '30d' | '90d' | 'custom';
+};
+
+const ACTIVOS = [
+  RequestStatus.REGISTRADA,
+  RequestStatus.EN_ANALISIS,
+  RequestStatus.EN_REVISION_COORDINACION,
+];
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function finDiaInclusive(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+}
+
+function enRango(ts: Date, desde: Date, hasta: Date): boolean {
+  return ts.getTime() >= desde.getTime() && ts.getTime() <= hasta.getTime();
+}
+
+function kpi(valor: number, anterior: number | null): DashboardAnalisisKpi {
+  return {
+    valor,
+    deltaVsPeriodoAnterior: anterior === null ? null : valor - anterior,
+  };
+}
+
+/** Resuelve ventana actual y anterior según preset (Spark B2). */
+export function resolverVentanaAnalisis(
+  query: DashboardAnalisisQueryDto,
+  ahora = new Date(),
+): VentanaAnalisis {
+  const clave = query.period ?? '30d';
+  const hasta = finDiaInclusive(ahora);
+
+  if (clave === 'custom' && query.from && query.to) {
+    const desde = startOfDay(new Date(query.from));
+    const hastaCustom = finDiaInclusive(new Date(query.to));
+    const duracion = hastaCustom.getTime() - desde.getTime() + MS_DIA;
+    const hastaAnterior = new Date(desde.getTime() - MS_DIA);
+    const desdeAnterior = new Date(hastaAnterior.getTime() - duracion + MS_DIA);
+    return {
+      desde,
+      hasta: hastaCustom,
+      desdeAnterior,
+      hastaAnterior: finDiaInclusive(hastaAnterior),
+      clave: 'custom',
+    };
+  }
+
+  const dias = clave === '7d' ? 7 : clave === '90d' ? 90 : 30;
+  const desde = new Date(hasta.getTime() - (dias - 1) * MS_DIA);
+  desde.setHours(0, 0, 0, 0);
+  const hastaAnterior = new Date(desde.getTime() - MS_DIA);
+  hastaAnterior.setHours(23, 59, 59, 999);
+  const desdeAnterior = new Date(hastaAnterior.getTime() - (dias - 1) * MS_DIA);
+  desdeAnterior.setHours(0, 0, 0, 0);
+
+  return {
+    desde,
+    hasta,
+    desdeAnterior,
+    hastaAnterior,
+    clave: clave === 'custom' ? '30d' : clave,
+  };
+}
+
+type MetricasNucleo = {
+  solicitudesPeriodo: number;
+  tiempoPromedioRespuestaDias: number;
+  entregadasATiempoPct: number;
+  vencidas: number;
+  aprobacionesPendientes: number;
+};
+
+function metricasEnVentana(
+  rows: SolicitudAnalisisRow[],
+  ventana: { desde: Date; hasta: Date },
+  ahora: Date,
+): MetricasNucleo {
+  const creadas = rows.filter((r) => enRango(r.createdAt, ventana.desde, ventana.hasta));
+
+  const cierres = rows.filter(
+    (r) =>
+      r.closedAt &&
+      enRango(r.closedAt, ventana.desde, ventana.hasta) &&
+      (r.status === RequestStatus.APROBADA ||
+        r.status === RequestStatus.RECHAZADA ||
+        r.status === RequestStatus.CANCELADA),
+  );
+
+  let sumaDias = 0;
+  let nTiempos = 0;
+  let aTiempo = 0;
+  let conFecha = 0;
+
+  for (const s of cierres) {
+    const fin = s.fechaEntrega ?? s.closedAt!;
+    const dias = (fin.getTime() - s.createdAt.getTime()) / MS_DIA;
+    if (dias >= 0) {
+      sumaDias += dias;
+      nTiempos += 1;
+    }
+    if (s.fechaRequerida) {
+      conFecha += 1;
+      const entrega = s.fechaEntrega ?? s.closedAt!;
+      if (entrega.getTime() <= s.fechaRequerida.getTime()) aTiempo += 1;
+    }
+  }
+
+  const activasVencidas = rows.filter((r) => {
+    if (!ACTIVOS.includes(r.status)) return false;
+    return esSolicitudVencida(
+      {
+        status: r.status,
+        fechaRequerida: r.fechaRequerida,
+        fechaEntrega: r.fechaEntrega,
+      },
+      ahora,
+    );
+  }).length;
+
+  const aprobacionesPendientes = rows.filter((r) => r.status === RequestStatus.EN_REVISION_COORDINACION).length;
+
+  return {
+    solicitudesPeriodo: creadas.length,
+    tiempoPromedioRespuestaDias: nTiempos ? sumaDias / nTiempos : 0,
+    entregadasATiempoPct: conFecha ? Math.round((aTiempo / conFecha) * 100) : 0,
+    vencidas: activasVencidas,
+    aprobacionesPendientes,
+  };
+}
+
+/** Agrega métricas del boceto 02 (Spark B1). */
 export function computarAnalisisDesdeSolicitudes(
   rows: SolicitudAnalisisRow[],
+  ventana: VentanaAnalisis,
   ahora: Date = new Date(),
-): DashboardAnalisisStats {
-  const mesActual = obtenerMesCalendarioEnZona(ahora);
+): Omit<DashboardAnalisisStats, 'areasDisponibles'> {
+  const actual = metricasEnVentana(rows, ventana, ahora);
+  const anterior =
+    ventana.desdeAnterior && ventana.hastaAnterior
+      ? metricasEnVentana(rows, { desde: ventana.desdeAnterior, hasta: ventana.hastaAnterior }, ahora)
+      : null;
 
   const porEstado: Record<RequestStatus, number> = {
     [RequestStatus.REGISTRADA]: 0,
@@ -32,90 +183,158 @@ export function computarAnalisisDesdeSolicitudes(
     [RequestStatus.CANCELADA]: 0,
   };
 
-  const porCategoria: Record<RequestCategory, number> = {
-    [RequestCategory.EXTRACCION_DATOS]: 0,
-    [RequestCategory.REPORTES_BI]: 0,
-    [RequestCategory.MODELOS_ML]: 0,
-    [RequestCategory.CALIDAD_DATOS]: 0,
-    [RequestCategory.GOBIERNO_DATOS]: 0,
-    [RequestCategory.ACCESO_BD]: 0,
-  };
-
-  let activas = 0;
-  let vencidas = 0;
-  let porVencer = 0;
-  let completadasMes = 0;
-  let rechazadas = 0;
-  let canceladas = 0;
-
-  const mesesMap = new Map<string, { completadas: number; rechazadas: number; canceladas: number }>();
-
-  const estadosActivos = [
-    RequestStatus.REGISTRADA,
-    RequestStatus.EN_ANALISIS,
-    RequestStatus.EN_REVISION_COORDINACION,
-  ];
+  const areaMap = new Map<string, number>();
+  const entregaPlazo = { aTiempo: 0, conAtraso: 0 };
+  const mesesResp = new Map<string, { sum: number; n: number }>();
+  const mesesSerie = new Map<string, { creadas: number; cerradas: number; vencidas: number }>();
+  const cargaMap = new Map<string, DashboardAnalisisCargaAnalistaRow>();
 
   for (const s of rows) {
-    porEstado[s.status] += 1;
-    porCategoria[s.category] += 1;
-
-    if (estadosActivos.includes(s.status)) {
-      activas += 1;
-      const paraVenc = {
-        status: s.status,
-        fechaRequerida: s.fechaRequerida,
-        fechaEntrega: s.fechaEntrega,
-      };
-      if (esSolicitudVencida(paraVenc, ahora)) vencidas += 1;
-      if (esSolicitudPorVencer(paraVenc, UMBRAL_POR_VENCER_DIAS_NATURALES, ahora)) porVencer += 1;
+    if (enRango(s.createdAt, ventana.desde, ventana.hasta)) {
+      porEstado[s.status] += 1;
+      areaMap.set(s.requesterArea, (areaMap.get(s.requesterArea) ?? 0) + 1);
     }
 
-    if (s.status === RequestStatus.RECHAZADA) rechazadas += 1;
-    if (s.status === RequestStatus.CANCELADA) canceladas += 1;
-
-    if (s.status === RequestStatus.APROBADA && s.closedAt) {
-      const mesCierre = obtenerMesCalendarioEnZona(s.closedAt);
-      if (mesCierre === mesActual) completadasMes += 1;
-      if (!mesesMap.has(mesCierre)) {
-        mesesMap.set(mesCierre, { completadas: 0, rechazadas: 0, canceladas: 0 });
-      }
-      mesesMap.get(mesCierre)!.completadas += 1;
+    if (
+      s.closedAt &&
+      enRango(s.closedAt, ventana.desde, ventana.hasta) &&
+      s.fechaRequerida
+    ) {
+      const entrega = s.fechaEntrega ?? s.closedAt;
+      if (entrega.getTime() <= s.fechaRequerida.getTime()) entregaPlazo.aTiempo += 1;
+      else entregaPlazo.conAtraso += 1;
     }
 
-    if (s.status === RequestStatus.RECHAZADA && s.closedAt) {
-      const mesCierre = obtenerMesCalendarioEnZona(s.closedAt);
-      if (!mesesMap.has(mesCierre)) {
-        mesesMap.set(mesCierre, { completadas: 0, rechazadas: 0, canceladas: 0 });
+    if (s.closedAt && enRango(s.closedAt, ventana.desde, ventana.hasta)) {
+      const mes = obtenerMesCalendarioEnZona(s.closedAt);
+      const fin = s.fechaEntrega ?? s.closedAt;
+      const dias = (fin.getTime() - s.createdAt.getTime()) / MS_DIA;
+      if (dias >= 0) {
+        const prev = mesesResp.get(mes) ?? { sum: 0, n: 0 };
+        prev.sum += dias;
+        prev.n += 1;
+        mesesResp.set(mes, prev);
       }
-      mesesMap.get(mesCierre)!.rechazadas += 1;
     }
 
-    if (s.status === RequestStatus.CANCELADA && s.closedAt) {
-      const mesCierre = obtenerMesCalendarioEnZona(s.closedAt);
-      if (!mesesMap.has(mesCierre)) {
-        mesesMap.set(mesCierre, { completadas: 0, rechazadas: 0, canceladas: 0 });
+    const mesC = obtenerMesCalendarioEnZona(s.createdAt);
+    if (!mesesSerie.has(mesC)) {
+      mesesSerie.set(mesC, { creadas: 0, cerradas: 0, vencidas: 0 });
+    }
+    if (enRango(s.createdAt, ventana.desde, ventana.hasta)) {
+      mesesSerie.get(mesC)!.creadas += 1;
+    }
+    if (s.closedAt && enRango(s.closedAt, ventana.desde, ventana.hasta)) {
+      const mesZ = obtenerMesCalendarioEnZona(s.closedAt);
+      if (!mesesSerie.has(mesZ)) {
+        mesesSerie.set(mesZ, { creadas: 0, cerradas: 0, vencidas: 0 });
       }
-      mesesMap.get(mesCierre)!.canceladas += 1;
+      mesesSerie.get(mesZ)!.cerradas += 1;
+    }
+    if (
+      ACTIVOS.includes(s.status) &&
+      esSolicitudVencida(
+        { status: s.status, fechaRequerida: s.fechaRequerida, fechaEntrega: s.fechaEntrega },
+        ahora,
+      )
+    ) {
+      const mesV = obtenerMesCalendarioEnZona(ahora);
+      if (!mesesSerie.has(mesV)) {
+        mesesSerie.set(mesV, { creadas: 0, cerradas: 0, vencidas: 0 });
+      }
+      mesesSerie.get(mesV)!.vencidas += 1;
+    }
+
+    if (ACTIVOS.includes(s.status)) {
+      const key = s.assignedAnalystId ?? '__sin__';
+      const nombre = s.assignedAnalystName?.trim() || 'Sin asignar';
+      if (!cargaMap.has(key)) {
+        cargaMap.set(key, {
+          analistaId: s.assignedAnalystId,
+          analistaNombre: nombre,
+          porEstado: {
+            [RequestStatus.REGISTRADA]: 0,
+            [RequestStatus.EN_ANALISIS]: 0,
+            [RequestStatus.EN_REVISION_COORDINACION]: 0,
+            [RequestStatus.APROBADA]: 0,
+            [RequestStatus.RECHAZADA]: 0,
+            [RequestStatus.CANCELADA]: 0,
+          },
+          vencidas: 0,
+        });
+      }
+      const row = cargaMap.get(key)!;
+      row.porEstado[s.status] += 1;
+      if (
+        esSolicitudVencida(
+          { status: s.status, fechaRequerida: s.fechaRequerida, fechaEntrega: s.fechaEntrega },
+          ahora,
+        )
+      ) {
+        row.vencidas += 1;
+      }
     }
   }
 
-  const serieUltimosMeses = Array.from(mesesMap.entries())
+  const porAreaRequester = Array.from(areaMap.entries())
+    .map(([area, count]) => ({ area, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const tiempoRespuestaPorMes = Array.from(mesesResp.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6)
+    .map(([mes, v]) => ({
+      mes,
+      promedioDias: v.n ? Math.round((v.sum / v.n) * 10) / 10 : null,
+    }));
+
+  const serieMensual = Array.from(mesesSerie.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-6)
     .map(([mes, v]) => ({ mes, ...v }));
 
+  const cargaPorAnalista = Array.from(cargaMap.values()).sort((a, b) => {
+    const ta =
+      a.porEstado[RequestStatus.REGISTRADA] +
+      a.porEstado[RequestStatus.EN_ANALISIS] +
+      a.porEstado[RequestStatus.EN_REVISION_COORDINACION];
+    const tb =
+      b.porEstado[RequestStatus.REGISTRADA] +
+      b.porEstado[RequestStatus.EN_ANALISIS] +
+      b.porEstado[RequestStatus.EN_REVISION_COORDINACION];
+    return tb - ta;
+  });
+
   return {
     resumen: {
-      activas,
-      vencidas,
-      porVencer,
-      completadasMes,
-      rechazadas,
-      canceladas,
+      solicitudesPeriodo: kpi(
+        actual.solicitudesPeriodo,
+        anterior ? anterior.solicitudesPeriodo : null,
+      ),
+      tiempoPromedioRespuestaDias: kpi(
+        Math.round(actual.tiempoPromedioRespuestaDias * 10) / 10,
+        anterior ? Math.round(anterior.tiempoPromedioRespuestaDias * 10) / 10 : null,
+      ),
+      entregadasATiempoPct: kpi(
+        actual.entregadasATiempoPct,
+        anterior ? anterior.entregadasATiempoPct : null,
+      ),
+      vencidas: kpi(actual.vencidas, anterior ? anterior.vencidas : null),
+      aprobacionesPendientes: kpi(
+        actual.aprobacionesPendientes,
+        anterior ? anterior.aprobacionesPendientes : null,
+      ),
     },
     porEstado,
-    porCategoria,
-    serieUltimosMeses,
+    porAreaRequester,
+    entregaPlazo,
+    tiempoRespuestaPorMes,
+    cargaPorAnalista,
+    serieMensual,
+    periodo: {
+      desde: ventana.desde.toISOString(),
+      hasta: ventana.hasta.toISOString(),
+      clave: ventana.clave,
+    },
   };
 }

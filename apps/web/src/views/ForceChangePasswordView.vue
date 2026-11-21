@@ -15,6 +15,10 @@ const currentPassword = ref('');
 const newPassword = ref('');
 const confirmPassword = ref('');
 const loading = ref(false);
+const mostrarClave = ref(false);
+
+const requisitos =
+  'Mínimo 10 caracteres, al menos una mayúscula, una minúscula y un número.';
 
 async function submit() {
   if (!currentPassword.value || !newPassword.value || newPassword.value !== confirmPassword.value) {
@@ -46,16 +50,36 @@ async function salir() {
 
 <template>
   <div class="force-pwd-page">
+    <div class="brand">BNB · Gerencia de Datos</div>
     <div class="card">
       <h1>Cambio de contraseña obligatorio</h1>
       <p>Por seguridad debe establecer una contraseña personal antes de usar la plataforma.</p>
+      <p class="req-hint">{{ requisitos }}</p>
       <form class="form" @submit.prevent="submit">
         <label>Contraseña actual (entregada por el administrador)</label>
-        <InputText v-model="currentPassword" type="password" fluid autocomplete="current-password" />
+        <InputText
+          v-model="currentPassword"
+          :type="mostrarClave ? 'text' : 'password'"
+          fluid
+          autocomplete="current-password"
+        />
         <label>Nueva contraseña</label>
-        <InputText v-model="newPassword" type="password" fluid autocomplete="new-password" />
+        <InputText
+          v-model="newPassword"
+          :type="mostrarClave ? 'text' : 'password'"
+          fluid
+          autocomplete="new-password"
+        />
         <label>Confirmar nueva contraseña</label>
-        <InputText v-model="confirmPassword" type="password" fluid autocomplete="new-password" />
+        <InputText
+          v-model="confirmPassword"
+          :type="mostrarClave ? 'text' : 'password'"
+          fluid
+          autocomplete="new-password"
+        />
+        <button type="button" class="toggle-pwd" @click="mostrarClave = !mostrarClave">
+          {{ mostrarClave ? 'Ocultar contraseñas' : 'Mostrar contraseñas' }}
+        </button>
         <div class="actions">
           <Button type="submit" label="Guardar y continuar" :loading="loading" />
           <Button type="button" label="Cerrar sesión" severity="secondary" outlined @click="salir" />
@@ -69,28 +93,44 @@ async function salir() {
 .force-pwd-page {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 2rem;
   background: var(--bnb-gray-50);
+  gap: 1rem;
+}
+.brand {
+  font-weight: 700;
+  color: var(--bnb-green, #26b460);
+  letter-spacing: 0.02em;
 }
 .card {
   max-width: 420px;
   width: 100%;
   background: #fff;
-  padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+  padding: 2rem;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
 }
-h1 {
-  font-size: 1.25rem;
-  margin-bottom: 0.5rem;
+.req-hint {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0 0 1rem;
 }
 .form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
+  gap: 0.65rem;
+}
+.toggle-pwd {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--bnb-green, #26b460);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
 }
 .actions {
   display: flex;

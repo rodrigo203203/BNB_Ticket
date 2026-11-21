@@ -24,6 +24,7 @@ import { QuerySolicitudesDto } from './dto/query-solicitudes.dto';
 import { AssignAnalystDto } from './dto/assign-analyst.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { UpdateFechaEntregaDto } from './dto/update-fecha-entrega.dto';
+import { GanttQueryDto } from './dto/gantt-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -61,8 +62,8 @@ export class SolicitudesController {
 
   @Get('gantt')
   @ApiOperation({ summary: 'Datos del diagrama Gantt (sin rol SOLICITANTE)' })
-  async gantt(@CurrentUser() user: UserSummary) {
-    return this.solicitudesService.findForGantt(user);
+  async gantt(@CurrentUser() user: UserSummary, @Query() query: GanttQueryDto) {
+    return this.solicitudesService.findForGantt(user, query);
   }
 
   @Get(':id')

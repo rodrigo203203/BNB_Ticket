@@ -218,7 +218,10 @@ function limpiarFiltros() {
                 <td>{{ p.porVencer }}</td>
                 <td class="hide-mobile">
                   <template v-if="p.proximaFechaEntrega">
-                    {{ formatearFechaCalendarioLaPaz(p.proximaFechaEntrega) }}
+                    <span :class="{ 'entrega-atrasada': p.proximaEntregaAtrasada }">
+                      <template v-if="p.proximaEntregaAtrasada">Entrega atrasada: </template>
+                      {{ formatearFechaCalendarioLaPaz(p.proximaFechaEntrega) }}
+                    </span>
                     <small v-if="p.proximaSolicitudCodigo">({{ p.proximaSolicitudCodigo }})</small>
                   </template>
                   <span v-else>—</span>
@@ -447,9 +450,29 @@ function limpiarFiltros() {
   border-radius: 8px;
 }
 
+.entrega-atrasada {
+  color: #dc2626;
+  font-weight: 600;
+}
+
 @media (max-width: 768px) {
   .hide-mobile {
     display: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .data-table th:first-child,
+  .data-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+    box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.1);
+  }
+  .data-table th:first-child {
+    z-index: 3;
+    background: #f8fafc;
   }
 }
 </style>

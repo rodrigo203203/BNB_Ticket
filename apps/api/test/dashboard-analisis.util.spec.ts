@@ -1,53 +1,66 @@
-import { computarAnalisisDesdeSolicitudes } from '../src/modules/dashboard/dashboard-analisis.util';
+import {
+  computarAnalisisDesdeSolicitudes,
+  resolverVentanaAnalisis,
+} from '../src/modules/dashboard/dashboard-analisis.util';
 import { RequestCategory, RequestStatus } from '@bnb/shared';
 
-describe('dashboard analisis (T8)', () => {
+describe('dashboard analisis Spark B1', () => {
   const ahora = new Date('2026-06-15T15:00:00.000Z');
+  const ventana = resolverVentanaAnalisis({ period: '30d' }, ahora);
 
-  it('separa rechazadas y canceladas', () => {
+  it('expone KPIs con forma DashboardAnalisisStats', () => {
     const stats = computarAnalisisDesdeSolicitudes(
       [
         {
-          status: RequestStatus.RECHAZADA,
+          status: RequestStatus.REGISTRADA,
           category: RequestCategory.REPORTES_BI,
-          fechaRequerida: null,
+          fechaRequerida: new Date('2026-06-20T12:00:00.000Z'),
           fechaEntrega: null,
-          closedAt: new Date('2026-05-01T12:00:00.000Z'),
-        },
-        {
-          status: RequestStatus.CANCELADA,
-          category: RequestCategory.CALIDAD_DATOS,
-          fechaRequerida: null,
-          fechaEntrega: null,
-          closedAt: new Date('2026-05-02T12:00:00.000Z'),
+          closedAt: null,
+          requesterArea: 'Riesgos',
+          createdAt: new Date('2026-06-10T12:00:00.000Z'),
+          assignedAnalystId: 'a1',
+          assignedAnalystName: 'Ana',
         },
       ],
+      ventana,
       ahora,
     );
-    expect(stats.resumen.rechazadas).toBe(1);
-    expect(stats.resumen.canceladas).toBe(1);
+    expect(stats.resumen.solicitudesPeriodo).toHaveProperty('valor');
+    expect(stats.resumen.solicitudesPeriodo).toHaveProperty('deltaVsPeriodoAnterior');
+    expect(stats.porAreaRequester[0]?.area).toBe('Riesgos');
   });
 
-  it('completadasMes usa closedAt en mes calendario La Paz', () => {
+  it('calcula entregas a tiempo vs con atraso', () => {
     const stats = computarAnalisisDesdeSolicitudes(
       [
         {
           status: RequestStatus.APROBADA,
           category: RequestCategory.ACCESO_BD,
-          fechaRequerida: null,
-          fechaEntrega: new Date('2026-06-10T12:00:00.000Z'),
-          closedAt: new Date('2026-06-14T12:00:00.000Z'),
+          fechaRequerida: new Date('2026-06-12T12:00:00.000Z'),
+          fechaEntrega: new Date('2026-06-11T12:00:00.000Z'),
+          closedAt: new Date('2026-06-11T15:00:00.000Z'),
+          requesterArea: 'Cartera',
+          createdAt: new Date('2026-06-01T12:00:00.000Z'),
+          assignedAnalystId: 'a1',
+          assignedAnalystName: 'Ana',
         },
         {
           status: RequestStatus.APROBADA,
           category: RequestCategory.ACCESO_BD,
-          fechaRequerida: null,
-          fechaEntrega: null,
-          closedAt: new Date('2026-05-20T12:00:00.000Z'),
+          fechaRequerida: new Date('2026-06-05T12:00:00.000Z'),
+          fechaEntrega: new Date('2026-06-08T12:00:00.000Z'),
+          closedAt: new Date('2026-06-08T12:00:00.000Z'),
+          requesterArea: 'Cartera',
+          createdAt: new Date('2026-06-01T12:00:00.000Z'),
+          assignedAnalystId: 'a1',
+          assignedAnalystName: 'Ana',
         },
       ],
+      ventana,
       ahora,
     );
-    expect(stats.resumen.completadasMes).toBe(1);
+    expect(stats.entregaPlazo.aTiempo).toBeGreaterThanOrEqual(1);
+    expect(stats.entregaPlazo.conAtraso).toBeGreaterThanOrEqual(1);
   });
 });

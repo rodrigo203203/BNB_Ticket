@@ -24,6 +24,7 @@ import { QuerySolicitudesDto } from './dto/query-solicitudes.dto';
 import { AssignAnalystDto } from './dto/assign-analyst.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { UpdateFechaEntregaDto } from './dto/update-fecha-entrega.dto';
+import { GanttQueryDto } from './dto/gantt-query.dto';
 import { EquipoCargaService } from '../equipo/equipo-carga.service';
 
 @Injectable()
@@ -394,23 +395,36 @@ export class SolicitudesService {
   }
 
   /** Datos para diagrama Gantt (boceto 03); solicitante sin acceso. */
-  async findForGantt(user: UserSummary): Promise<SolicitudGanttItem[]> {
+  async findForGantt(user: UserSummary, query: GanttQueryDto = {}): Promise<SolicitudGanttItem[]> {
     if (user.role === Role.SOLICITANTE) {
       throw new ForbiddenException('El diagrama Gantt no está disponible para solicitantes');
     }
 
-    const where: { assignedAnalystId?: string } = {};
+    const estadosActivos = [
+      RequestStatus.REGISTRADA,
+      RequestStatus.EN_ANALISIS,
+      RequestStatus.EN_REVISION_COORDINACION,
+    ];
+    const statusFilter = query.statuses?.length
+      ? (query.statuses as RequestStatus[])
+      : estadosActivos;
+
+    const where: Record<string, unknown> = {
+      status: { in: statusFilter },
+    };
+
     if (user.role === Role.ANALISTA) {
       where.assignedAnalystId = user.id;
+    } else if (query.analystIds?.length) {
+      where.assignedAnalystId = { in: query.analystIds };
+    }
+
+    if (query.areas?.length) {
+      where.requesterArea = { in: query.areas };
     }
 
     const rows = await this.prisma.solicitud.findMany({
-      where: {
-        ...where,
-        status: {
-          notIn: [RequestStatus.CANCELADA, RequestStatus.RECHAZADA],
-        },
-      },
+      where: where as any,
       include: { assignedAnalyst: true },
       orderBy: [{ fechaRequerida: 'asc' }, { createdAt: 'asc' }],
     });

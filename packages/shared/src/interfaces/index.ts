@@ -86,13 +86,17 @@ export interface DashboardStatsSolicitante {
   misSolicitudesRecientes: SolicitudItem[];
 }
 
+export interface DashboardAnalisisKpi {
+  valor: number;
+  deltaVsPeriodoAnterior: number | null;
+}
+
 export interface DashboardAnalisisResumen {
-  activas: number;
-  vencidas: number;
-  porVencer: number;
-  completadasMes: number;
-  rechazadas: number;
-  canceladas: number;
+  solicitudesPeriodo: DashboardAnalisisKpi;
+  tiempoPromedioRespuestaDias: DashboardAnalisisKpi;
+  entregadasATiempoPct: DashboardAnalisisKpi;
+  vencidas: DashboardAnalisisKpi;
+  aprobacionesPendientes: DashboardAnalisisKpi;
 }
 
 export interface EncargadoConCarga {
@@ -113,6 +117,7 @@ export interface EquipoCargaPersonaRow extends EncargadoConCarga {
   proximaFechaEntrega: string | null;
   proximaSolicitudCodigo: string | null;
   proximaSolicitudId: string | null;
+  proximaEntregaAtrasada?: boolean;
 }
 
 export interface EquipoCargaResponse {
@@ -144,16 +149,28 @@ export interface SolicitudGanttItem {
   vencida: boolean;
 }
 
+export interface DashboardAnalisisAreaRow {
+  area: string;
+  count: number;
+}
+
+export interface DashboardAnalisisCargaAnalistaRow {
+  analistaId: string | null;
+  analistaNombre: string;
+  porEstado: Record<RequestStatus, number>;
+  vencidas: number;
+}
+
 export interface DashboardAnalisisStats {
   resumen: DashboardAnalisisResumen;
   porEstado: Record<RequestStatus, number>;
-  porCategoria: Record<RequestCategory, number>;
-  serieUltimosMeses: Array<{
-    mes: string;
-    completadas: number;
-    rechazadas: number;
-    canceladas: number;
-  }>;
+  porAreaRequester: DashboardAnalisisAreaRow[];
+  entregaPlazo: { aTiempo: number; conAtraso: number };
+  tiempoRespuestaPorMes: Array<{ mes: string; promedioDias: number | null }>;
+  cargaPorAnalista: DashboardAnalisisCargaAnalistaRow[];
+  serieMensual: Array<{ mes: string; creadas: number; cerradas: number; vencidas: number }>;
+  areasDisponibles: string[];
+  periodo: { desde: string; hasta: string; clave: '7d' | '30d' | '90d' | 'custom' };
 }
 
 export interface DashboardStatsAnalista {
