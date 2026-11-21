@@ -91,7 +91,8 @@ rules/             Reglas de exclusión de contexto para agentes
 | Despliegue | Documentado para Windows + IIS; credenciales en docs corregidas en `chore/contexto` |
 | Offline / npm | En PR — scripts `scripts/offline/*.ps1`, docs/instalacion-offline.md, Inter vía @fontsource |
 | Postgres | Modo **portable** (zip) o **service** (instalador); ver [docs/postgres.md](./docs/postgres.md) |
-| Seed producción | `seed:admin` idempotente; `seed:demo` solo desarrollo |
+| Seed producción | `seed:admin` idempotente; `seed:demo` solo desarrollo (sobrescribe datos demo, no usar en prod) |
+| Release v2 | Rama `release/v2` integra fases 1–3 + postgres dual + QA diseño |
 
 ## Pendientes y bloqueos
 
