@@ -55,13 +55,13 @@ describe('carga equipo (boceto 04)', () => {
     expect(esVencidaVistaCarga(s, ahora)).toBe(true);
   });
 
-  it('no vencida en vista carga si ya hay entrega (aunque sea tarde — dashboard T8 sí la cuenta)', () => {
+  it('vencida en vista carga si hay entrega tardía en activa (misma regla B7)', () => {
     const s = fila({
       status: RequestStatus.EN_ANALISIS,
       fechaRequerida: '2026-06-01T12:00:00.000Z',
       fechaEntrega: '2026-06-20T12:00:00.000Z',
     });
-    expect(esVencidaVistaCarga(s, ahora)).toBe(false);
+    expect(esVencidaVistaCarga(s, ahora)).toBe(true);
   });
 
   it('por vencer: ≤3 días naturales sin entrega', () => {

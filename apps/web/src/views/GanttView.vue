@@ -136,9 +136,11 @@ function etiquetaEjeLaPaz(t: number, tipo: 'dayWeek' | 'month'): string {
   }).format(new Date(t));
 }
 
-/** Vencida sin entrega: tramo rojo fecha requerida → hoy. */
-function muestraTramoVencido(s: SolicitudGanttItem): boolean {
-  return s.vencida && !s.fechaEntrega && Boolean(s.fechaRequerida);
+function finBarraPlanificadaMs(s: SolicitudGanttItem): number {
+  if (s.vencida && s.fechaRequerida) {
+    return instanteCalendarioLaPaz(s.fechaRequerida);
+  }
+  return finBarraMs(s);
 }
 
 const rango = computed(() => {
@@ -154,7 +156,7 @@ const rango = computed(() => {
     const req = msFechaRequerida(s);
     dataMin = Math.min(dataMin, start, end, req ?? Infinity);
     dataMax = Math.max(dataMax, start, end, req ?? -Infinity);
-    if (muestraTramoVencido(s)) {
+    if (s.vencida && s.fechaRequerida) {
       dataMax = Math.max(dataMax, hoy);
     }
   }
@@ -241,9 +243,6 @@ function finBarraMs(s: SolicitudGanttItem): number {
     const ent = instanteCalendarioLaPaz(s.fechaEntrega);
     if (ent >= cre) return ent;
   }
-  if (muestraTramoVencido(s)) {
-    return msFechaRequerida(s) ?? inicioDiaHoyLaPaz();
-  }
   if (GANTT_FIN_BARRA_SIN_ENTREGA === 'fecha_requerida' && s.fechaRequerida) {
     return instanteCalendarioLaPaz(s.fechaRequerida);
   }
@@ -285,13 +284,35 @@ function barStyleRango(startMs: number, endMs: number, minWidth = 1.2) {
 }
 
 function barStyle(s: SolicitudGanttItem) {
-  return barStyleRango(msCreacion(s), finBarraMs(s), s.sinFechaEntrega ? 1.8 : 1.2);
+  const dashed = s.sinFechaEntrega && !s.fechaEntrega;
+  return barStyleRango(msCreacion(s), finBarraPlanificadaMs(s), dashed ? 1.8 : 1.2);
+}
+
+function finTramoVencidoMs(s: SolicitudGanttItem): number {
+  if (s.fechaEntrega) {
+    return instanteCalendarioLaPaz(s.fechaEntrega);
+  }
+  return inicioDiaHoyLaPaz();
 }
 
 function barStyleTramoVencido(s: SolicitudGanttItem) {
   const req = msFechaRequerida(s);
-  if (!req) return { display: 'none' };
-  return barStyleRango(req, inicioDiaHoyLaPaz(), 1.2);
+  if (!req || !s.vencida) return { display: 'none' };
+  return barStyleRango(req, finTramoVencidoMs(s), 1.2);
+}
+
+type MarcadorRequeridaUi =
+  | { kind: 'none' }
+  | { kind: 'diamond'; style: Record<string, string> }
+  | { kind: 'edge'; side: 'left' | 'right' };
+
+function marcadorRequeridaUi(s: SolicitudGanttItem): MarcadorRequeridaUi {
+  if (!rango.value || !s.fechaRequerida) return { kind: 'none' };
+  const req = instanteCalendarioLaPaz(s.fechaRequerida);
+  const { min, max } = rango.value;
+  if (req < min) return { kind: 'edge', side: 'left' };
+  if (req > max) return { kind: 'edge', side: 'right' };
+  return { kind: 'diamond', style: marcadorRequeridaStyle(s) };
 }
 
 const lineaHoy = computed(() => {
@@ -304,9 +325,19 @@ const lineaHoy = computed(() => {
   };
 });
 
-function marcadorRequeridaStyle(s: SolicitudGanttItem) {
-  if (!rango.value || !s.fechaRequerida) return {};
+function marcadorRequeridaStyle(s: SolicitudGanttItem): Record<string, string> {
+  if (!rango.value || !s.fechaRequerida) return { left: '0%' };
   return { left: `${pctEnRango(instanteCalendarioLaPaz(s.fechaRequerida))}%` };
+}
+
+function marcadorDiamondStyle(s: SolicitudGanttItem): Record<string, string> | null {
+  const ui = marcadorRequeridaUi(s);
+  return ui.kind === 'diamond' ? ui.style : null;
+}
+
+function marcadorEdgeSide(s: SolicitudGanttItem): 'left' | 'right' | null {
+  const ui = marcadorRequeridaUi(s);
+  return ui.kind === 'edge' ? ui.side : null;
 }
 
 function etiquetaAnalistaArea(s: SolicitudGanttItem): string {
@@ -322,7 +353,9 @@ function analistaSinAsignar(s: SolicitudGanttItem): boolean {
 const zoomHint = computed(() => {
   if (!rango.value) return '';
   const a = formatearFechaCalendarioLaPaz(new Date(rango.value.min));
-  const b = formatearFechaCalendarioLaPaz(new Date(rango.value.max));
+  const finMs =
+    zoom.value === 'week' ? rango.value.min + 6 * DAY_MS : rango.value.max;
+  const b = formatearFechaCalendarioLaPaz(new Date(finMs));
   return `Vista ${ZOOM_LABELS[zoom.value].toLowerCase()}: ${a} — ${b}`;
 });
 </script>
@@ -457,10 +490,13 @@ const zoomHint = computed(() => {
               </div>
               <div class="gantt-track-col track-col-padded">
                 <span v-if="lineaHoy" class="hoy-line" :style="{ left: lineaHoy.x + '%' }" />
-                <template v-if="muestraTramoVencido(s)">
+                <template v-if="s.vencida && s.fechaRequerida">
                   <div
-                    class="gantt-bar gantt-bar--dashed"
-                    :class="'gantt-bar--' + s.status.toLowerCase()"
+                    class="gantt-bar"
+                    :class="{
+                      'gantt-bar--dashed': s.sinFechaEntrega && !s.fechaEntrega,
+                      [`gantt-bar--${s.status.toLowerCase()}`]: true,
+                    }"
                     :style="barStyle(s)"
                     :title="STATUS_LABELS[s.status]"
                   />
@@ -474,19 +510,27 @@ const zoomHint = computed(() => {
                   v-else
                   class="gantt-bar"
                   :class="{
-                    'gantt-bar--dashed': s.sinFechaEntrega && !s.vencida,
-                    'gantt-bar--vencida': s.vencida,
-                    ['gantt-bar--' + s.status.toLowerCase()]: !s.vencida,
+                    'gantt-bar--dashed': s.sinFechaEntrega,
+                    [`gantt-bar--${s.status.toLowerCase()}`]: true,
                   }"
                   :style="barStyle(s)"
                   :title="STATUS_LABELS[s.status]"
                 />
                 <span
-                  v-if="s.fechaRequerida"
+                  v-if="marcadorDiamondStyle(s)"
                   class="deadline-marker"
-                  :style="marcadorRequeridaStyle(s)"
+                  :style="marcadorDiamondStyle(s)!"
                   title="Fecha requerida"
                 />
+                <span
+                  v-else-if="marcadorEdgeSide(s)"
+                  class="deadline-edge"
+                  :class="
+                    marcadorEdgeSide(s) === 'left' ? 'deadline-edge--left' : 'deadline-edge--right'
+                  "
+                  title="Fecha requerida fuera del rango"
+                  >{{ marcadorEdgeSide(s) === 'left' ? '→' : '←' }}</span
+                >
               </div>
             </div>
           </div>
@@ -691,7 +735,7 @@ const zoomHint = computed(() => {
 
 .tick-row {
   position: relative;
-  height: 36px;
+  height: 44px;
   border-bottom: 1px dashed #e2e8f0;
 }
 
@@ -735,6 +779,34 @@ const zoomHint = computed(() => {
   border-color: #7c3aed;
 }
 
+.gantt-bar--registrada:not(.gantt-bar--overdue-trail) {
+  background: #38bdf8;
+  border-color: #0284c7;
+}
+
+.gantt-bar--registrada.gantt-bar--dashed {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: #0284c7;
+}
+
+.deadline-edge {
+  position: absolute;
+  top: 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #64748b;
+  z-index: 3;
+  line-height: 1;
+}
+
+.deadline-edge--left {
+  left: 2px;
+}
+
+.deadline-edge--right {
+  right: 2px;
+}
+
 .hoy-line {
   position: absolute;
   top: 4px;
@@ -758,8 +830,8 @@ const zoomHint = computed(() => {
 }
 
 .hoy-label--head {
-  top: 0;
-  transform: translate(-50%, 0);
+  top: -6px;
+  transform: translate(-50%, -100%);
 }
 
 .gantt-bar--overdue-trail {
@@ -801,7 +873,7 @@ const zoomHint = computed(() => {
 }
 
 .legend-swatch.dashed {
-  border: 2px dashed var(--bnb-green);
+  border: 2px dashed #94a3b8;
   background: transparent;
   height: 8px;
 }

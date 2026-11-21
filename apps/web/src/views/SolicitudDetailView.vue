@@ -527,7 +527,10 @@ onMounted(() => {
               <span class="assign-row-main">
                 <strong>{{ u.fullName }}</strong>
                 <small>{{ ROLE_LABELS[u.role] }} · {{ u.area }}</small>
-                <small class="assign-stats">{{ u.activas }} activas, {{ u.vencidas }} vencidas</small>
+                <small class="assign-stats"
+                  >{{ u.activas }} {{ u.activas === 1 ? 'activa' : 'activas' }}, {{ u.vencidas }}
+                  {{ u.vencidas === 1 ? 'vencida' : 'vencidas' }}</small
+                >
               </span>
               <span :class="['carga-pill', `carga-pill--${u.nivel}`]">{{ cargaLabel(u) }}</span>
               <span v-if="u.nivel === 'alta'" class="alta-warning">! Aviso: carga alta</span>
@@ -1337,6 +1340,12 @@ onMounted(() => {
 .ticket-body-grid {
   max-width: 100%;
   min-width: 0;
+}
+
+@media (max-width: 1200px) {
+  .ticket-body-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  }
 }
 
 @media (max-width: 900px) {

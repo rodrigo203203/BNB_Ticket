@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
+import Select from 'primevue/select';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../stores/auth.store';
 import {
@@ -23,6 +24,25 @@ const filtroRol = ref<Role | ''>('');
 const filtroArea = ref('');
 const filtroNivel = ref<NivelCarga | ''>('');
 const ordenCarga = ref<'desc' | 'asc'>('desc');
+
+const opcionesRol = [
+  { label: 'Todos', value: '' as Role | '' },
+  { label: ROLE_LABELS[Role.ANALISTA], value: Role.ANALISTA },
+  { label: ROLE_LABELS[Role.COORDINADOR], value: Role.COORDINADOR },
+  { label: ROLE_LABELS[Role.ADMINISTRADOR], value: Role.ADMINISTRADOR },
+];
+
+const opcionesNivel = [
+  { label: 'Todos los niveles', value: '' as NivelCarga | '' },
+  { label: 'Baja', value: 'baja' as NivelCarga },
+  { label: 'Media', value: 'media' as NivelCarga },
+  { label: 'Alta', value: 'alta' as NivelCarga },
+];
+
+const opcionesOrden = [
+  { label: 'Mayor a menor', value: 'desc' as const },
+  { label: 'Menor a mayor', value: 'asc' as const },
+];
 
 const esVistaPropia = computed(() => authStore.user?.role === Role.ANALISTA);
 
@@ -135,35 +155,43 @@ function limpiarFiltros() {
         <div v-if="!esVistaPropia" class="filtros-bar">
           <label class="filtro-field">
             <span>Rol</span>
-            <select v-model="filtroRol" class="filtro-select">
-              <option value="">Todos</option>
-              <option :value="Role.ANALISTA">{{ ROLE_LABELS[Role.ANALISTA] }}</option>
-              <option :value="Role.COORDINADOR">{{ ROLE_LABELS[Role.COORDINADOR] }}</option>
-              <option :value="Role.ADMINISTRADOR">{{ ROLE_LABELS[Role.ADMINISTRADOR] }}</option>
-            </select>
+            <Select
+              v-model="filtroRol"
+              :options="opcionesRol"
+              option-label="label"
+              option-value="value"
+              class="filtro-prime"
+            />
           </label>
           <label class="filtro-field">
             <span>Área</span>
-            <select v-model="filtroArea" class="filtro-select">
-              <option value="">Todas</option>
-              <option v-for="a in areasDisponibles" :key="a" :value="a">{{ a }}</option>
-            </select>
+            <Select
+              v-model="filtroArea"
+              :options="[{ label: 'Todas', value: '' }, ...areasDisponibles.map((a) => ({ label: a, value: a }))]"
+              option-label="label"
+              option-value="value"
+              class="filtro-prime"
+            />
           </label>
           <label class="filtro-field">
             <span>Carga</span>
-            <select v-model="filtroNivel" class="filtro-select">
-              <option value="">Todos los niveles</option>
-              <option value="baja">Baja</option>
-              <option value="media">Media</option>
-              <option value="alta">Alta</option>
-            </select>
+            <Select
+              v-model="filtroNivel"
+              :options="opcionesNivel"
+              option-label="label"
+              option-value="value"
+              class="filtro-prime"
+            />
           </label>
           <label class="filtro-field">
             <span>Ordenar</span>
-            <select v-model="ordenCarga" class="filtro-select">
-              <option value="desc">Mayor a menor</option>
-              <option value="asc">Menor a mayor</option>
-            </select>
+            <Select
+              v-model="ordenCarga"
+              :options="opcionesOrden"
+              option-label="label"
+              option-value="value"
+              class="filtro-prime"
+            />
           </label>
           <button type="button" class="btn-limpiar" @click="limpiarFiltros">Limpiar filtros</button>
         </div>
@@ -383,6 +411,16 @@ function limpiarFiltros() {
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 600;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.filtro-prime {
+  min-width: 10.5rem;
+}
+
+.filtro-prime :deep(.p-select) {
+  width: 100%;
 }
 
 .nivel-baja {

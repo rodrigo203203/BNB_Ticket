@@ -1,11 +1,10 @@
 import { RequestPriority, RequestStatus } from '../enums/index.js';
 import { obtenerDiaCalendarioEnZona } from './fechas-solicitud.js';
-import { diasHastaFechaRequerida } from './vencimiento-solicitud.js';
+import { diasHastaFechaRequerida, esSolicitudVencida } from './vencimiento-solicitud.js';
 
 /**
  * Vista carga del equipo (boceto 04) — umbrales en días naturales.
- * Nota: el dashboard T8 usa `esSolicitudVencida` en vencimiento-solicitud.ts,
- * que también cuenta entregas tardías; aquí solo “sin entrega y fecha requerida pasada”.
+ * Vencidas: misma regla que dashboard/Gantt (`esSolicitudVencida`, Spark B7).
  */
 export const UMBRAL_POR_VENCER_DIAS_NATURALES = 3;
 
@@ -49,14 +48,12 @@ export function esActivaParaCarga(s: SolicitudCargaRow): boolean {
   return false;
 }
 
-/** Vencida (vista carga): fecha requerida pasada y aún sin fecha de entrega. */
+/** Vencida en vista carga (solo activas asignables; delega en esSolicitudVencida). */
 export function esVencidaVistaCarga(s: SolicitudCargaRow, ahora: Date = new Date()): boolean {
-  if (!esActivaParaCarga(s) || !s.fechaRequerida || s.fechaEntrega) {
+  if (!esActivaParaCarga(s)) {
     return false;
   }
-  const diaReq = obtenerDiaCalendarioEnZona(new Date(s.fechaRequerida));
-  const diaHoy = obtenerDiaCalendarioEnZona(ahora);
-  return diaHoy > diaReq;
+  return esSolicitudVencida(s, ahora);
 }
 
 /** Por vencer: sin entrega, no vencida, faltan ≤3 días naturales para fecha requerida. */
@@ -64,7 +61,7 @@ export function esPorVencerVistaCarga(s: SolicitudCargaRow, ahora: Date = new Da
   if (!esActivaParaCarga(s) || !s.fechaRequerida || s.fechaEntrega) {
     return false;
   }
-  if (esVencidaVistaCarga(s, ahora)) {
+  if (esSolicitudVencida(s, ahora)) {
     return false;
   }
   const dias = diasHastaFechaRequerida(s.fechaRequerida, ahora);

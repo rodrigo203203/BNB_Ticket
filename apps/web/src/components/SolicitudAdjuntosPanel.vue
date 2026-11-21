@@ -9,6 +9,7 @@ import {
   RequestStatus,
   Role,
   SolicitudAdjuntoItem,
+  formatearFechaCalendarioLaPaz,
 } from '@bnb/shared';
 import { useAuthStore } from '../stores/auth.store';
 
@@ -202,7 +203,7 @@ defineExpose({ subirPendientes, cargarLista });
             <span class="adjunto-name">{{ adj.originalName }}</span>
             <span class="adjunto-meta">
               {{ formatearTamano(adj.sizeBytes) }} ·
-              {{ new Date(adj.createdAt).toLocaleDateString('es-BO') }}
+              {{ formatearFechaCalendarioLaPaz(adj.createdAt) }}
             </span>
           </div>
         </div>

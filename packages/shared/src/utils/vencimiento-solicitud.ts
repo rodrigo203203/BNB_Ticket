@@ -1,8 +1,15 @@
 import { RequestStatus } from '../enums/index.js';
-import { obtenerDiaCalendarioEnZona } from './fechas-solicitud.js';
+import { obtenerDiaCalendarioEnZona, inicioDiaHoyLaPaz } from './fechas-solicitud.js';
+
+/** Estados activos para evaluar vencimiento operativo (boceto 02). */
+export const ESTADOS_ACTIVOS_VENCIMIENTO: RequestStatus[] = [
+  RequestStatus.REGISTRADA,
+  RequestStatus.EN_ANALISIS,
+  RequestStatus.EN_REVISION_COORDINACION,
+];
 
 /**
- * Rechazada y cancelada nunca cuentan como vencidas (regla boceto 2).
+ * Rechazada y cancelada nunca cuentan como vencidas (decisión Rodrigo).
  */
 export function estadosExcluidosVencimiento(): RequestStatus[] {
   return [RequestStatus.RECHAZADA, RequestStatus.CANCELADA];
@@ -15,9 +22,36 @@ export type SolicitudParaVencimiento = {
 };
 
 /**
- * Vencida (dashboard T8 / análisis operativo): entregada después de la fecha requerida,
- * o sin entregar con fecha requerida ya pasada.
- * La vista **Carga del equipo** (T9b) usa `esVencidaVistaCarga` (solo sin entrega).
+ * Día de referencia para comparar contra fecha requerida (America/La_Paz).
+ * - Activa sin entregar: hoy (o hoy si el compromiso de entrega ya pasó — N8).
+ * - Activa con compromiso futuro: día del compromiso.
+ * - Cerrada / aprobada: día de entrega declarado.
+ */
+export function diaReferenciaPlazoVencimiento(
+  s: SolicitudParaVencimiento,
+  ahora: Date = new Date(),
+): string {
+  const diaHoy = obtenerDiaCalendarioEnZona(ahora);
+  if (ESTADOS_ACTIVOS_VENCIMIENTO.includes(s.status)) {
+    if (!s.fechaEntrega) {
+      return diaHoy;
+    }
+    const diaEnt = obtenerDiaCalendarioEnZona(new Date(s.fechaEntrega));
+    if (diaHoy > diaEnt) {
+      return diaHoy;
+    }
+    return diaEnt;
+  }
+  if (s.fechaEntrega) {
+    return obtenerDiaCalendarioEnZona(new Date(s.fechaEntrega));
+  }
+  return diaHoy;
+}
+
+/**
+ * Vencida (única fuente de verdad — Spark B7):
+ * activa sin entregar con fecha requerida pasada, o entregada (referencia) después de la requerida.
+ * Rechazada/cancelada: nunca.
  */
 export function esSolicitudVencida(
   s: SolicitudParaVencimiento,
@@ -30,10 +64,19 @@ export function esSolicitudVencida(
     return false;
   }
   const diaReq = obtenerDiaCalendarioEnZona(new Date(s.fechaRequerida));
-  const diaRef = s.fechaEntrega
-    ? obtenerDiaCalendarioEnZona(new Date(s.fechaEntrega))
-    : obtenerDiaCalendarioEnZona(ahora);
+  const diaRef = diaReferenciaPlazoVencimiento(s, ahora);
   return diaRef > diaReq;
+}
+
+/** Fin del tramo rojo en Gantt: hoy en La Paz cuando sigue activa/vencida. */
+export function finTramoVencidoGanttMs(
+  s: SolicitudParaVencimiento,
+  ahora: Date = new Date(),
+): number {
+  if (!esSolicitudVencida(s, ahora)) {
+    return inicioDiaHoyLaPaz(ahora);
+  }
+  return inicioDiaHoyLaPaz(ahora);
 }
 
 /** Días naturales hasta la fecha requerida (negativo = ya pasó). */

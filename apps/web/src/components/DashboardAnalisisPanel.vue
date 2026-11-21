@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Chart from 'primevue/chart';
 import { apiClient } from '../api/client';
 import {
@@ -117,7 +117,29 @@ async function cargar() {
 
 const omitirRecargaAuto = ref(false);
 
-onMounted(cargar);
+const chartsGridRef = ref<HTMLElement | null>(null);
+let gridResizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  void cargar();
+  if (typeof ResizeObserver !== 'undefined') {
+    gridResizeObserver = new ResizeObserver(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    watch(
+      chartsGridRef,
+      (el) => {
+        gridResizeObserver?.disconnect();
+        if (el) gridResizeObserver?.observe(el);
+      },
+      { flush: 'post', immediate: true },
+    );
+  }
+});
+
+onBeforeUnmount(() => {
+  gridResizeObserver?.disconnect();
+});
 
 watch([periodo, filtroArea, fechaDesde, fechaHasta], () => {
   if (omitirRecargaAuto.value) return;
@@ -144,10 +166,21 @@ function formatoDelta(delta: number | null, unidad = ''): string {
   return `${signo}${delta}${unidad} vs período anterior`;
 }
 
+const formatoNumeroEs = new Intl.NumberFormat('es-BO', { maximumFractionDigits: 1 });
+
 function formatoValorKpi(clave: keyof DashboardAnalisisStats['resumen'], valor: number): string {
   if (clave === 'entregadasATiempoPct') return `${Math.round(valor)}%`;
-  if (clave === 'tiempoPromedioRespuestaDias') return valor.toFixed(1);
+  if (clave === 'tiempoPromedioRespuestaDias') {
+    return valor > 0 ? `${formatoNumeroEs.format(valor)} días` : formatoNumeroEs.format(valor);
+  }
   return String(valor);
+}
+
+function claseKpiEntregaPct(valor: number): string {
+  if (valor >= 80) return 'kpi-ok';
+  if (valor >= 50) return 'kpi-warn';
+  if (valor > 0) return 'kpi-danger';
+  return 'kpi-neutral';
 }
 
 const areasOpciones = computed(() => {
@@ -212,11 +245,17 @@ const chartAreas = computed(() => {
   };
 });
 
+const entregaPlazoVacia = computed(() => {
+  const ep = analisis.value?.entregaPlazo;
+  if (!ep) return true;
+  return ep.aTiempo + ep.conAtraso === 0;
+});
+
 const porcentajeEntregaCentro = computed(() => {
   const ep = analisis.value?.entregaPlazo;
   if (!ep) return '';
   const total = ep.aTiempo + ep.conAtraso;
-  if (!total) return '—';
+  if (!total) return 'Sin entregas';
   return `${Math.round((ep.aTiempo / total) * 100)}%`;
 });
 
@@ -409,7 +448,7 @@ const tarjetasKpi = computed(() => {
     {
       key: 'entregadasATiempoPct' as const,
       label: 'Entregadas a tiempo',
-      clase: 'kpi-ok',
+      clase: claseKpiEntregaPct(r.entregadasATiempoPct.valor),
       sufijoDelta: ' pts',
     },
     {
@@ -509,7 +548,7 @@ const tarjetasKpi = computed(() => {
         </div>
       </div>
 
-      <div class="charts-grid">
+      <div ref="chartsGridRef" class="charts-grid">
         <div v-if="chartEstados" class="chart-card">
           <h3>Distribución por estado</h3>
           <div class="chart-box">
@@ -525,9 +564,10 @@ const tarjetasKpi = computed(() => {
           </div>
         </div>
 
-        <div v-if="chartEntregaPlazo" class="chart-card">
+        <div v-if="analisis.entregaPlazo" class="chart-card">
           <h3>Entrega dentro del plazo</h3>
-          <div class="chart-box">
+          <div v-if="entregaPlazoVacia" class="chart-empty">Sin entregas en el período</div>
+          <div v-else-if="chartEntregaPlazo" class="chart-box chart-box-doughnut">
             <Chart
               type="doughnut"
               :data="chartEntregaPlazo"
@@ -709,12 +749,15 @@ const tarjetasKpi = computed(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+  min-width: 0;
 }
 
 .chart-card {
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 0.85rem 1rem 1rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .chart-card h3 {
@@ -734,7 +777,28 @@ const tarjetasKpi = computed(() => {
 }
 
 .chart-box {
+  position: relative;
   height: 220px;
+  min-width: 0;
+}
+
+.chart-box-doughnut {
+  height: 240px;
+}
+
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #64748b;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.kpi-neutral .kpi-value {
+  color: #64748b;
 }
 
 .chart-box-tall {
@@ -753,6 +817,12 @@ const tarjetasKpi = computed(() => {
 
 .analisis-error {
   color: #b91c1c;
+}
+
+@media (max-width: 1199px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {

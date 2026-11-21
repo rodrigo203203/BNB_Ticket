@@ -5,7 +5,10 @@ import {
   RequestCategory,
   RequestStatus,
   esSolicitudVencida,
+  obtenerDiaCalendarioEnZona,
   obtenerMesCalendarioEnZona,
+  desplazarDiaCalendarioLaPaz,
+  inicioDiaHoyLaPaz,
 } from '@bnb/shared';
 import { DashboardAnalisisQueryDto } from './dto/dashboard-analisis-query.dto';
 
@@ -37,12 +40,13 @@ const ACTIVOS = [
   RequestStatus.EN_REVISION_COORDINACION,
 ];
 
-function startOfDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+/** Fin del día calendario actual en America/La_Paz (N2). */
+function finDiaHoyLaPaz(ahora: Date): Date {
+  return new Date(inicioDiaHoyLaPaz(ahora) + MS_DIA - 1);
 }
 
-function finDiaInclusive(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+function inicioDiaLaPaz(isoDia: string): Date {
+  return new Date(`${isoDia}T12:00:00.000Z`);
 }
 
 function enRango(ts: Date, desde: Date, hasta: Date): boolean {
@@ -62,11 +66,11 @@ export function resolverVentanaAnalisis(
   ahora = new Date(),
 ): VentanaAnalisis {
   const clave = query.period ?? '30d';
-  const hasta = finDiaInclusive(ahora);
+  const hasta = finDiaHoyLaPaz(ahora);
 
   if (clave === 'custom' && query.from && query.to) {
-    const desde = startOfDay(new Date(query.from));
-    const hastaCustom = finDiaInclusive(new Date(query.to));
+    const desde = inicioDiaLaPaz(obtenerDiaCalendarioEnZona(new Date(query.from)));
+    const hastaCustom = finDiaHoyLaPaz(new Date(query.to));
     const duracion = hastaCustom.getTime() - desde.getTime() + MS_DIA;
     const hastaAnterior = new Date(desde.getTime() - MS_DIA);
     const desdeAnterior = new Date(hastaAnterior.getTime() - duracion + MS_DIA);
@@ -74,18 +78,19 @@ export function resolverVentanaAnalisis(
       desde,
       hasta: hastaCustom,
       desdeAnterior,
-      hastaAnterior: finDiaInclusive(hastaAnterior),
+      hastaAnterior: new Date(inicioDiaHoyLaPaz(hastaAnterior) + MS_DIA - 1),
       clave: 'custom',
     };
   }
 
   const dias = clave === '7d' ? 7 : clave === '90d' ? 90 : 30;
-  const desde = new Date(hasta.getTime() - (dias - 1) * MS_DIA);
-  desde.setHours(0, 0, 0, 0);
-  const hastaAnterior = new Date(desde.getTime() - MS_DIA);
-  hastaAnterior.setHours(23, 59, 59, 999);
-  const desdeAnterior = new Date(hastaAnterior.getTime() - (dias - 1) * MS_DIA);
-  desdeAnterior.setHours(0, 0, 0, 0);
+  const diaHoy = obtenerDiaCalendarioEnZona(ahora);
+  const diaDesde = desplazarDiaCalendarioLaPaz(diaHoy, -(dias - 1));
+  const desde = inicioDiaLaPaz(diaDesde);
+  const diaFinAnt = desplazarDiaCalendarioLaPaz(diaDesde, -1);
+  const diaDesdeAnt = desplazarDiaCalendarioLaPaz(diaFinAnt, -(dias - 1));
+  const hastaAnterior = new Date(inicioDiaLaPaz(diaFinAnt).getTime() + MS_DIA - 1);
+  const desdeAnterior = inicioDiaLaPaz(diaDesdeAnt);
 
   return {
     desde,
