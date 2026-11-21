@@ -18,6 +18,16 @@ export default defineConfig(({ mode }) => {
         '@bnb/shared': path.resolve(__dirname, '../../packages/shared/src'),
       },
     },
+    optimizeDeps: {
+      include: [
+        'primevue/tag',
+        'primevue/chart',
+        'primevue/datepicker',
+        'primevue/button',
+        'primevue/multiselect',
+        'primevue/select',
+      ],
+    },
     envDir,
     server: {
       port: 5173,
