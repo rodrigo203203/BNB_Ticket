@@ -16,11 +16,22 @@ Este documento detalla las políticas y procedimientos técnicos para la protecc
 
 ---
 
-## 2. Procedimiento de Respaldo Manual con `pg_dump`
+## 2. Procedimiento de Respaldo (PostgreSQL portable)
 
-### Respaldo en Formato Personalizado Comprimido (Recomendado):
+En Windows con binarios portables, use los scripts del proyecto (contraseña solo por entorno):
+
+```powershell
+cd D:\Aplicaciones\BNB_GerenciaDatos\scripts\postgres
+$env:POSTGRES_SUPERUSER_PASSWORD = "<desde gestor de secretos>"
+.\backup.ps1
+```
+
+El respaldo custom (`.dump`) se guarda en `backupDir` del archivo `postgres.local.config.json` (ver [postgres-portable.md](./postgres-portable.md)).
+
+### Respaldo manual con `pg_dump` (misma carpeta `pgBin`):
+
 ```bash
-# Formato binario con compresión nativa
+# Formato binario con compresión nativa — ejecutar desde PG_BIN del zip portable
 pg_dump -h localhost -p 5432 -U <PG_USER> -F c -b -v -f "bnb_tickets_dev_$(date +%Y%m%d_%H%M%S).dump" bnb_tickets_dev
 ```
 
@@ -31,9 +42,9 @@ pg_dump -h localhost -p 5432 -U <PG_USER> -F p -v -f "bnb_tickets_dev_backup.sql
 
 ---
 
-## 3. Script Automatizado para Windows Server (PowerShell)
+## 3. Script alternativo (Programador de tareas)
 
-Guardar como `D:\Aplicaciones\Scripts\Backup-BNBTickets.ps1` y programar en el **Programador de Tareas de Windows (Task Scheduler)**:
+Si no usa `scripts/postgres/backup.ps1`, puede programar una tarea que invoque `pg_dump.exe` del **mismo zip portable** (`PG_BIN`):
 
 ```powershell
 # Parámetros de configuración
@@ -44,7 +55,7 @@ if (-not $DbUser) { $DbUser = "<PG_USER>" }
 $BackupDir = "D:\Backups\BNB_Tickets"
 $DateStamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $BackupFile = "$BackupDir\${DbName}_${DateStamp}.dump"
-$PgDumpPath = "C:\Program Files\PostgreSQL\16\bin\pg_dump.exe"
+$PgDumpPath = "$env:PG_BIN\pg_dump.exe"
 
 # Asegurar existencia del directorio de destino
 if (-not (Test-Path $BackupDir)) {

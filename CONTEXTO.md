@@ -19,9 +19,11 @@ Plataforma corporativa del BNB para registrar, asignar y dar trazabilidad a soli
 - **Repositorio:** [rodrigo203203/BNB_Ticket](https://github.com/rodrigo203203/BNB_Ticket)
 - **Rama base:** `main` (sin merges directos desde tareas).
 - **Convención:** una rama por tarea; PR a `main` solo tras revisión de Rodrigo.
-- **Ramas activas (fase 0):**
+- **Ramas activas (fase 0–2):**
   - `chore/contexto` — CONTEXTO, `.cursorrules`, higiene de credenciales en docs.
-  - `chore/npm-offline` — npm workspaces, empaquetado offline, fuente Inter local (apilada sobre `chore/contexto`).
+  - `chore/npm-offline` — npm workspaces, empaquetado offline, Inter local.
+  - `chore/postgres-portable` — PostgreSQL zip + scripts PowerShell.
+  - `feat/schema-migraciones` … `feat/usuarios-csv` — modelo, admin, CSV (apiladas).
 
 ## Estructura
 
@@ -42,7 +44,7 @@ rules/             Reglas de exclusión de contexto para agentes
 3. Respetar `.cursorignore`; no indexar `node_modules`, `dist`, lockfiles, `storage`, etc.
 4. Código modular, comentarios útiles **en español**; documentación en español.
 5. **Producción:** servidor Windows 11 x64 **sin internet**. Los paquetes se arman en otra máquina Windows x64 con internet y se copian al servidor.
-6. **PostgreSQL:** solo binarios portables (zip, `initdb`, `pg_ctl`), no instalador como servicio — fase posterior; no bloquea el API actual.
+6. **PostgreSQL:** solo binarios portables (zip, `initdb`, `pg_ctl`); scripts en `scripts/postgres/`.
 7. **Tipografía:** fuente **Inter** autohospedada en el proyecto; sin Google Fonts ni otros CDNs.
 8. **Agentes en la nube (Cursor):** usar el modelo **Composer** para programar en este repo.
 9. Al **cerrar cada tarea**, actualizar secciones **Estado**, **Decisiones** y **Pendientes** en este archivo.
@@ -57,6 +59,7 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-20 | Migración pnpm → npm con `package-lock.json` versionado y scripts PowerShell de empaquetado. |
 | 2026-11-21 | `binaryTargets` Prisma: `native` + `windows`; eliminadas optionalDependencies darwin en api/web. |
 | 2026-11-21 | Dev paralelo: `concurrently` en script `npm run dev` (npm workspaces corre en serie). |
+| 2026-11-21 | Postgres portable: config `postgres.local.config.json`; secretos vía `POSTGRES_SUPERUSER_PASSWORD` y `BNB_DB_PASSWORD`. |
 | 2026-11-20 | Credenciales solo en `.env` / variables de entorno; docs con placeholders (`<PG_USER>`, `<PG_PASSWORD>`). |
 | 2026-11-20 | Agentes Cursor: modelo Composer. |
 
@@ -68,15 +71,15 @@ rules/             Reglas de exclusión de contexto para agentes
 | BD | `prisma db push` (sin migraciones versionadas aún) |
 | Despliegue | Documentado para Windows + IIS; credenciales en docs corregidas en `chore/contexto` |
 | Offline / npm | En PR — scripts `scripts/offline/*.ps1`, docs/instalacion-offline.md, Inter vía @fontsource |
-| Postgres portable | No iniciado |
+| Postgres portable | Scripts init/start/create-db/backup en `chore/postgres-portable` |
 | Seed producción | Pendiente — seed admin idempotente; **no** usar seed destructivo de demo en prod |
 
 ## Pendientes y bloqueos
 
 **Fases futuras (orden sugerido):**
 
-1. Postgres portable + scripts `initdb` / `pg_ctl` y enganche en arranque.
-2. Prisma Migrate + schema estable.
+1. ~~Postgres portable~~ (rama T2).
+2. Prisma Migrate + campos solicitud/adjuntos (T3).
 3. `seed:admin` idempotente (variables `ADMIN_EMAIL`, `ADMIN_PASSWORD`); separar `seed:demo`.
 4. Alta masiva de usuarios por CSV (email, nombre, rol, área; clave temporal obligatoria a cambiar en primer ingreso).
 5. Campos nuevos en solicitud: *fecha requerida* (cuando el solicitante necesita el dato), *fecha de entrega* (analista; editable coordinador/admin), listado de campos, adjuntos.
@@ -94,6 +97,7 @@ rules/             Reglas de exclusión de contexto para agentes
 - [docs/arquitectura.md](./docs/arquitectura.md)
 - [docs/deployment-windows.md](./docs/deployment-windows.md)
 - [docs/instalacion-offline.md](./docs/instalacion-offline.md)
+- [docs/postgres-portable.md](./docs/postgres-portable.md)
 - [docs/backup-restore.md](./docs/backup-restore.md)
 - [rules/ignore-rules.md](./rules/ignore-rules.md) — detalle de exclusiones para agentes
 - Plan de análisis (referencia interna): `uploads/bnb_ticket_plan.md`
