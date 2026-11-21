@@ -7,6 +7,7 @@ import {
   DashboardAnalisisStats,
   RequestStatus,
   STATUS_LABELS,
+  desplazarDiaCalendarioLaPaz,
   formatearFechaCalendarioLaPaz,
   obtenerDiaCalendarioEnZona,
 } from '@bnb/shared';
@@ -180,17 +181,23 @@ const areasOpciones = computed(() => {
   return base;
 });
 
-/** R3-2: último día incluido en La Paz (evita fin de rango exclusivo en UTC). */
 function formatearDiaPeriodoInclusivo(iso: string): string {
   const dia = obtenerDiaCalendarioEnZona(new Date(iso));
   return formatearFechaCalendarioLaPaz(`${dia}T12:00:00.000Z`);
+}
+
+/** R3-2: `hasta` del API es fin de día (mediodía+24h−1ms); en La Paz cae en el día siguiente. */
+function formatearFinPeriodoInclusivo(isoHasta: string): string {
+  const dia = obtenerDiaCalendarioEnZona(new Date(isoHasta));
+  const diaInclusivo = desplazarDiaCalendarioLaPaz(dia, -1);
+  return formatearFechaCalendarioLaPaz(`${diaInclusivo}T12:00:00.000Z`);
 }
 
 const subtituloPeriodo = computed(() => {
   const p = analisis.value?.periodo;
   if (!p) return 'Indicadores de plazo, carga y tendencias del período seleccionado.';
   const desde = formatearDiaPeriodoInclusivo(p.desde);
-  const hasta = formatearDiaPeriodoInclusivo(p.hasta);
+  const hasta = formatearFinPeriodoInclusivo(p.hasta);
   return `Del ${desde} al ${hasta} · comparación con el período anterior equivalente.`;
 });
 
