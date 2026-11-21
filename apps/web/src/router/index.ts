@@ -50,6 +50,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, roles: [Role.ADMINISTRADOR] },
   },
   {
+    path: '/cambio-clave-obligatorio',
+    name: 'ForceChangePassword',
+    component: () => import('../views/ForceChangePasswordView.vue'),
+    meta: { requiresAuth: true, mustChangePasswordOnly: true },
+  },
+  {
     path: '/profile',
     name: 'Profile',
     component: () => import('../views/ProfileView.vue'),
@@ -88,6 +94,15 @@ router.beforeEach(async (to, _from, next) => {
   const isAuthenticated = authStore.isAuthenticated;
 
   if (to.meta.guestOnly && isAuthenticated) {
+    return next('/dashboard');
+  }
+
+  const debeCambiarClave = authStore.user?.mustChangePassword === true;
+  if (isAuthenticated && debeCambiarClave) {
+    if (to.name !== 'ForceChangePassword' && to.name !== 'Login') {
+      return next({ name: 'ForceChangePassword' });
+    }
+  } else if (to.meta.mustChangePasswordOnly) {
     return next('/dashboard');
   }
 

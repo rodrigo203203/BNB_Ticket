@@ -25,6 +25,7 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { AllowMustChangePassword } from '../../common/decorators/allow-must-change-password.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { UserSummary } from '@bnb/shared';
@@ -105,6 +106,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @AllowMustChangePassword()
   @Get('me')
   @ApiOperation({ summary: 'Obtiene el perfil y rol del usuario autenticado' })
   async getMe(@CurrentUser() user: UserSummary) {
@@ -112,6 +114,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @AllowMustChangePassword()
   @Patch('change-password')
   @ApiOperation({ summary: 'Cambiar la contraseña del usuario autenticado' })
   async changePassword(

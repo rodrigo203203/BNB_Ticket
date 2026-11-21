@@ -23,7 +23,9 @@
     "prisma:generate": "npm run prisma:generate --workspace=@bnb/api",
     "prisma:migrate:dev": "npm run prisma:migrate:dev --workspace=@bnb/api",
     "prisma:migrate:deploy": "npm run prisma:migrate:deploy --workspace=@bnb/api",
-    "seed": "npm run db:seed --workspace=@bnb/api",
+    "seed": "npm run seed:admin --workspace=@bnb/api",
+    "seed:admin": "npm run seed:admin --workspace=@bnb/api",
+    "seed:demo": "npm run seed:demo --workspace=@bnb/api",
     "verify:env": "node scripts/verify-env.mjs"
   },
   "devDependencies": {

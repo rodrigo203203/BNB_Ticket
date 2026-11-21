@@ -72,7 +72,7 @@ rules/             Reglas de exclusión de contexto para agentes
 | Despliegue | Documentado para Windows + IIS; credenciales en docs corregidas en `chore/contexto` |
 | Offline / npm | En PR — scripts `scripts/offline/*.ps1`, docs/instalacion-offline.md, Inter vía @fontsource |
 | Postgres portable | Scripts init/start/create-db/backup en `chore/postgres-portable` |
-| Seed producción | Pendiente — seed admin idempotente; **no** usar seed destructivo de demo en prod |
+| Seed producción | `seed:admin` idempotente; `seed:demo` solo desarrollo |
 
 ## Pendientes y bloqueos
 
