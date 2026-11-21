@@ -31,7 +31,10 @@ Plataforma corporativa del BNB para registrar, asignar y dar trazabilidad a soli
   - `feat/gantt` — ruta `/gantt`, API `GET /solicitudes/gantt`, barras discontinuas sin fecha de entrega.
   - `feat/carga-equipo` — vista `/equipo/carga`, `GET /equipo/carga` (analista solo su fila); motivo obligatorio si carga ALTA.
   - `feat/ui-pulido` — foco visible y utilidades CSS de página.
-  - `release/bnb-ticket-v2` — integración fase 3 → PR a `main` (sin merge automático).
+  - `chore/postgres-dual` — Postgres portable o servicio Windows.
+  - `fix/revision-qa` — Gantt zoom/vencidas, CSV preview, icono carga, seed:demo, UX adjuntos.
+  - `release/v2` — integración fases 1–3 + TA/TB → PR a `main`.
+  - `release/bnb-ticket-v2` — integración fase 3 anterior (sustituida por `release/v2`).
 
 ## Estructura
 
@@ -77,6 +80,7 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-21 | **T9 Gantt:** `/gantt` + `GET /solicitudes/gantt`; barras punteadas sin `fechaEntrega`. |
 | 2026-11-21 | **T9b carga equipo:** `/equipo/carga` + `GET /equipo/carga`; puntos prioridad (1–4), umbrales 10/20/21; vencida vista solo sin entrega; reasignación con motivo si carga ALTA. |
 | 2026-11-21 | **Postgres dual:** `mode` portable \| service en `postgres.local.config.json` o `PG_MODE`; `initdb` solo portable; `install-server` respeta el modo. |
+| 2026-11-21 | **QA revisión diseño:** Gantt día/semana/mes + vencidas rojas; CSV muestra válidas y errores; `faUsersGear`; `seed:demo` autocontenido; adjuntos texto neutro para no solicitante. |
 
 ## Estado
 

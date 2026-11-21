@@ -10,8 +10,18 @@ const items = ref<SolicitudGanttItem[]>([]);
 const loading = ref(true);
 const errorMessage = ref('');
 
+/** Zoom del timeline (boceto 03). */
+type ZoomGantt = 'day' | 'week' | 'month';
+const zoom = ref<ZoomGantt>('week');
+
 const DAY_MS = 86_400_000;
 const LEFT_LABEL_W = 220;
+
+const ZOOM_LABELS: Record<ZoomGantt, string> = {
+  day: 'Día',
+  week: 'Semana',
+  month: 'Mes',
+};
 
 async function cargar() {
   loading.value = true;
@@ -29,25 +39,104 @@ async function cargar() {
 
 onMounted(cargar);
 
+function startOfLocalDay(t: number) {
+  const d = new Date(t);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/** Lunes como inicio de semana (es-BO). */
+function startOfLocalWeek(t: number) {
+  const d = new Date(t);
+  const day = d.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff);
+  return monday.getTime();
+}
+
+function startOfLocalMonth(t: number) {
+  const d = new Date(t);
+  return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+}
+
+function endOfLocalMonth(t: number) {
+  const d = new Date(t);
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+}
+
 const rango = computed(() => {
   if (!items.value.length) return null;
-  let min = Infinity;
-  let max = -Infinity;
+
+  let dataMin = Infinity;
+  let dataMax = -Infinity;
   for (const s of items.value) {
     const start = new Date(s.createdAt).getTime();
     const end = new Date(s.fechaEntrega || s.fechaRequerida || s.createdAt).getTime();
-    min = Math.min(min, start);
-    max = Math.max(max, end, start);
+    dataMin = Math.min(dataMin, start, end);
+    dataMax = Math.max(dataMax, start, end);
+    if (s.fechaRequerida) {
+      dataMax = Math.max(dataMax, new Date(s.fechaRequerida).getTime());
+    }
   }
-  max += 2 * DAY_MS;
-  return { min, max, span: Math.max(max - min, DAY_MS) };
+
+  let min: number;
+  let max: number;
+
+  if (zoom.value === 'day') {
+    min = startOfLocalDay(dataMin);
+    max = min + 14 * DAY_MS;
+    if (dataMax > max) {
+      max = startOfLocalDay(dataMax) + DAY_MS;
+      min = max - 14 * DAY_MS;
+    }
+  } else if (zoom.value === 'week') {
+    min = startOfLocalWeek(dataMin);
+    max = min + 7 * DAY_MS;
+    while (dataMax > max) {
+      min += 7 * DAY_MS;
+      max += 7 * DAY_MS;
+    }
+  } else {
+    min = startOfLocalMonth(dataMin);
+    max = endOfLocalMonth(dataMax);
+    if (max - min < 7 * DAY_MS) {
+      max = min + 31 * DAY_MS;
+    }
+  }
+
+  const span = Math.max(max - min, DAY_MS);
+  return { min, max, span };
 });
 
 const ticks = computed(() => {
   if (!rango.value) return [];
-  const { min, max } = rango.value;
+  const { min, max, span } = rango.value;
   const out: { x: number; label: string }[] = [];
-  const steps = 6;
+
+  if (zoom.value === 'day') {
+    const days = Math.min(14, Math.ceil(span / DAY_MS));
+    for (let i = 0; i <= days; i++) {
+      const t = min + i * DAY_MS;
+      if (t > max) break;
+      out.push({
+        x: ((t - min) / span) * 100,
+        label: new Date(t).toLocaleDateString('es-BO', { weekday: 'short', day: 'numeric' }),
+      });
+    }
+    return out;
+  }
+
+  if (zoom.value === 'week') {
+    for (let i = 0; i <= 6; i++) {
+      const t = min + i * DAY_MS;
+      out.push({
+        x: (i / 6) * 100,
+        label: new Date(t).toLocaleDateString('es-BO', { weekday: 'short', day: 'numeric' }),
+      });
+    }
+    return out;
+  }
+
+  const steps = 5;
   for (let i = 0; i <= steps; i++) {
     const t = min + ((max - min) * i) / steps;
     out.push({
@@ -64,13 +153,19 @@ function barStyle(s: SolicitudGanttItem) {
   const start = new Date(s.createdAt).getTime();
   const end = new Date(s.fechaEntrega || s.fechaRequerida || s.createdAt).getTime();
   const leftPct = ((start - min) / span) * 100;
-  const widthPct = Math.max(((end - start) / span) * 100, 1.5);
+  const widthPct = Math.max(((end - start) / span) * 100, 1.2);
   return {
-    left: `${leftPct}%`,
+    left: `${Math.max(0, leftPct)}%`,
     width: `${widthPct}%`,
   };
 }
 
+const zoomHint = computed(() => {
+  if (!rango.value) return '';
+  const a = new Date(rango.value.min).toLocaleDateString('es-BO');
+  const b = new Date(rango.value.max).toLocaleDateString('es-BO');
+  return `Vista ${ZOOM_LABELS[zoom.value].toLowerCase()}: ${a} — ${b}`;
+});
 </script>
 
 <template>
@@ -80,13 +175,28 @@ function barStyle(s: SolicitudGanttItem) {
         <div>
           <h1 class="page-title">Diagrama Gantt</h1>
           <p class="page-subtitle">
-            Línea de tiempo por solicitud (boceto 03). Barra discontinua si no hay fecha de entrega comprometida.
+            Línea de tiempo por solicitud (boceto 03). Barra discontinua sin fecha de entrega; rojo si está vencida.
           </p>
+          <p v-if="zoomHint" class="zoom-hint">{{ zoomHint }}</p>
         </div>
-        <button type="button" class="refresh-btn" :disabled="loading" @click="cargar">
-          <font-awesome-icon icon="rotate" :spin="loading" />
-          Actualizar
-        </button>
+        <div class="gantt-header-actions">
+          <div class="zoom-switch" role="group" aria-label="Zoom del timeline">
+            <button
+              v-for="z in (['day', 'week', 'month'] as ZoomGantt[])"
+              :key="z"
+              type="button"
+              class="zoom-btn"
+              :class="{ active: zoom === z }"
+              @click="zoom = z"
+            >
+              {{ ZOOM_LABELS[z] }}
+            </button>
+          </div>
+          <button type="button" class="refresh-btn" :disabled="loading" @click="cargar">
+            <font-awesome-icon icon="rotate" :spin="loading" />
+            Actualizar
+          </button>
+        </div>
       </div>
 
       <div v-if="loading" class="loading-state">
@@ -132,8 +242,9 @@ function barStyle(s: SolicitudGanttItem) {
                 <div
                   class="gantt-bar"
                   :class="{
-                    'gantt-bar--dashed': s.sinFechaEntrega,
-                    ['gantt-bar--' + s.status.toLowerCase()]: true,
+                    'gantt-bar--dashed': s.sinFechaEntrega && !s.vencida,
+                    'gantt-bar--vencida': s.vencida,
+                    ['gantt-bar--' + s.status.toLowerCase()]: !s.vencida,
                   }"
                   :style="barStyle(s)"
                   :title="STATUS_LABELS[s.status]"
@@ -153,7 +264,8 @@ function barStyle(s: SolicitudGanttItem) {
         </div>
         <p class="gantt-legend">
           <span class="legend-swatch solid" /> Con fecha de entrega
-          <span class="legend-swatch dashed" /> Sin fecha de entrega (compromiso pendiente)
+          <span class="legend-swatch dashed" /> Sin fecha de entrega
+          <span class="legend-swatch overdue" /> Vencida
           <span class="legend-deadline" /> Marcador: fecha requerida
         </p>
       </div>
@@ -173,6 +285,42 @@ function barStyle(s: SolicitudGanttItem) {
   align-items: flex-start;
   gap: 1rem;
   margin-bottom: 1.25rem;
+}
+
+.gantt-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.zoom-switch {
+  display: inline-flex;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.zoom-btn {
+  border: none;
+  background: transparent;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.zoom-btn.active {
+  background: var(--bnb-green, #26b460);
+  color: #fff;
+  font-weight: 600;
+}
+
+.zoom-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #94a3b8;
 }
 
 .page-title {
@@ -273,6 +421,7 @@ function barStyle(s: SolicitudGanttItem) {
   font-size: 0.72rem;
   color: #94a3b8;
   top: 8px;
+  white-space: nowrap;
 }
 
 .gantt-bar {
@@ -290,12 +439,18 @@ function barStyle(s: SolicitudGanttItem) {
   border-color: var(--bnb-green);
 }
 
-.gantt-bar--en_analisis {
+.gantt-bar--vencida {
+  background: #ef4444 !important;
+  border-color: #b91c1c !important;
+  border-style: solid;
+}
+
+.gantt-bar--en_analisis:not(.gantt-bar--vencida) {
   background: #fbbf24;
   border-color: #d97706;
 }
 
-.gantt-bar--en_revision_coordinacion {
+.gantt-bar--en_revision_coordinacion:not(.gantt-bar--vencida) {
   background: #c4b5fd;
   border-color: #7c3aed;
 }
@@ -336,6 +491,10 @@ function barStyle(s: SolicitudGanttItem) {
   border: 2px dashed var(--bnb-green);
   background: transparent;
   height: 8px;
+}
+
+.legend-swatch.overdue {
+  background: #ef4444;
 }
 
 .legend-deadline::before {

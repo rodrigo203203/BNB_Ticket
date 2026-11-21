@@ -256,8 +256,7 @@ defineExpose({ subirPendientes, cargarLista });
     </div>
 
     <p v-else-if="authStore.user?.role !== Role.SOLICITANTE" class="adjuntos-readonly">
-      Solo el solicitante puede subir o eliminar adjuntos mientras el ticket está
-      <strong>REGISTRADA</strong>.
+      Adjuntos enviados por el solicitante.
     </p>
   </div>
 </template>
