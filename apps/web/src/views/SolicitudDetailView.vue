@@ -17,6 +17,7 @@ import {
   canEditFechaEntrega,
   etiquetaEstadoPlazo,
   fechaCalendarioToIso,
+  EncargadoConCarga,
 } from '@bnb/shared';
 
 const route = useRoute();
@@ -28,7 +29,7 @@ const errorMessage = ref('');
 
 // Modal de Asignación
 const showAssignModal = ref(false);
-const assignableUsers = ref<Array<{ id: string; fullName: string; email: string; role: Role; area: string }>>([]);
+const assignableUsers = ref<EncargadoConCarga[]>([]);
 const selectedAnalystId = ref('');
 const assignComment = ref('');
 const assigning = ref(false);
@@ -51,6 +52,23 @@ const fechaEntregaError = ref('');
 const isManager = computed(() => {
   return authStore.user?.role === Role.COORDINADOR || authStore.user?.role === Role.ADMINISTRADOR;
 });
+
+const selectedAssignable = computed(() =>
+  assignableUsers.value.find((u) => u.id === selectedAnalystId.value),
+);
+
+const requiereMotivoCargaAlta = computed(() => selectedAssignable.value?.nivel === 'alta');
+
+const puedeConfirmarAsignacion = computed(() => {
+  if (!selectedAnalystId.value) return false;
+  if (requiereMotivoCargaAlta.value && !assignComment.value.trim()) return false;
+  return true;
+});
+
+function cargaLabel(u: EncargadoConCarga) {
+  const map: Record<string, string> = { baja: 'Baja', media: 'Media', alta: 'Alta' };
+  return map[u.nivel] ?? u.nivel;
+}
 
 const availableTransitions = computed(() => {
   if (!solicitud.value || !authStore.user) return [];
@@ -146,7 +164,7 @@ async function openAssignModal() {
 }
 
 async function handleAssign() {
-  if (!selectedAnalystId.value || !solicitud.value) return;
+  if (!puedeConfirmarAsignacion.value || !solicitud.value) return;
 
   assigning.value = true;
   try {
@@ -473,25 +491,41 @@ onMounted(() => {
             <em>(Regla: No es posible asignar a usuarios con rol Solicitante)</em>.
           </p>
 
-          <div class="form-group">
-            <label for="analystSelect">Encargado Responsable <span class="required">*</span></label>
-            <select id="analystSelect" v-model="selectedAnalystId" class="form-control" required>
-              <option disabled value="">Seleccione un encargado...</option>
-              <option v-for="u in assignableUsers" :key="u.id" :value="u.id">
-                {{ u.fullName }} — {{ u.role }} ({{ u.area }})
-              </option>
-            </select>
+          <div class="assign-list">
+            <label class="assign-list-label">Encargado responsable <span class="required">*</span></label>
+            <label
+              v-for="u in assignableUsers"
+              :key="u.id"
+              class="assign-row"
+              :class="{ selected: selectedAnalystId === u.id, 'assign-row--alta': u.nivel === 'alta' }"
+            >
+              <input v-model="selectedAnalystId" type="radio" name="analyst" :value="u.id" />
+              <span class="assign-row-main">
+                <strong>{{ u.fullName }}</strong>
+                <small>{{ u.role }} · {{ u.area }}</small>
+                <small class="assign-stats">{{ u.activas }} activas, {{ u.vencidas }} vencidas</small>
+              </span>
+              <span :class="['carga-pill', `carga-pill--${u.nivel}`]">{{ cargaLabel(u) }}</span>
+              <span v-if="u.nivel === 'alta'" class="alta-warning">! Aviso: carga alta</span>
+            </label>
           </div>
 
           <div class="form-group">
-            <label for="assignNote">Instrucción / Nota de Asignación</label>
+            <label for="assignNote">
+              Instrucción / Nota de Asignación
+              <span v-if="requiereMotivoCargaAlta" class="required">*</span>
+            </label>
             <textarea
               id="assignNote"
               v-model="assignComment"
               rows="3"
               class="form-control"
+              :required="requiereMotivoCargaAlta"
               placeholder="Ej. Priorizar variables de cartera y validar cruce ASFI con el solicitante."
             ></textarea>
+            <p v-if="requiereMotivoCargaAlta" class="field-hint">
+              Obligatorio cuando el encargado tiene carga ALTA ({{ selectedAssignable?.puntosCarga }} pts).
+            </p>
           </div>
         </div>
         <div class="modal-footer">
@@ -499,7 +533,7 @@ onMounted(() => {
           <button
             type="button"
             class="btn-primary"
-            :disabled="assigning || !selectedAnalystId"
+            :disabled="assigning || !puedeConfirmarAsignacion"
             @click="handleAssign"
           >
             <font-awesome-icon v-if="assigning" icon="spinner" spin />
@@ -1074,6 +1108,88 @@ onMounted(() => {
   justify-content: center;
   z-index: 100;
   padding: 1rem;
+}
+
+.assign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 240px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.assign-list-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.assign-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.assign-row.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.assign-row--alta {
+  border-color: #fecaca;
+}
+
+.assign-row-main strong {
+  display: block;
+}
+
+.assign-row-main small {
+  display: block;
+  color: #64748b;
+}
+
+.assign-stats {
+  margin-top: 0.15rem;
+}
+
+.carga-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+.carga-pill--baja {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.carga-pill--media {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.carga-pill--alta {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.alta-warning {
+  grid-column: 2 / -1;
+  color: #b91c1c;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #b91c1c;
 }
 
 .modal-dialog {
