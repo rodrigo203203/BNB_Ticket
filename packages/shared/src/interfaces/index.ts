@@ -137,6 +137,8 @@ export interface SolicitudGanttItem {
   createdAt: string;
   /** Sin fecha de entrega comprometida: la barra se dibuja con trazo discontinuo. */
   sinFechaEntrega: boolean;
+  /** Igual criterio que dashboard (`esSolicitudVencida`); rechazada/cancelada siempre false. */
+  vencida: boolean;
 }
 
 export interface DashboardAnalisisStats {

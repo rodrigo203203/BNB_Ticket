@@ -16,6 +16,7 @@ import {
   SolicitudItem,
   SolicitudGanttItem,
   UserSummary,
+  esSolicitudVencida,
 } from '@bnb/shared';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { UpdateSolicitudStatusDto } from './dto/update-status.dto';
@@ -404,25 +405,38 @@ export class SolicitudesService {
       where: {
         ...where,
         status: {
-          notIn: [RequestStatus.CANCELADA],
+          notIn: [RequestStatus.CANCELADA, RequestStatus.RECHAZADA],
         },
       },
       include: { assignedAnalyst: true },
       orderBy: [{ fechaRequerida: 'asc' }, { createdAt: 'asc' }],
     });
 
-    return rows.map((r: (typeof rows)[number]) => ({
-      id: r.id,
-      code: r.code,
-      title: r.title,
-      status: r.status as RequestStatus,
-      priority: r.priority as RequestPriority,
-      assignedAnalystName: r.assignedAnalyst?.fullName ?? null,
-      fechaRequerida: r.fechaRequerida ? r.fechaRequerida.toISOString() : null,
-      fechaEntrega: r.fechaEntrega ? r.fechaEntrega.toISOString() : null,
-      createdAt: r.createdAt.toISOString(),
-      sinFechaEntrega: !r.fechaEntrega,
-    }));
+    const ahora = new Date();
+    return rows.map((r: (typeof rows)[number]) => {
+      const fechaRequerida = r.fechaRequerida ? r.fechaRequerida.toISOString() : null;
+      const fechaEntrega = r.fechaEntrega ? r.fechaEntrega.toISOString() : null;
+      return {
+        id: r.id,
+        code: r.code,
+        title: r.title,
+        status: r.status as RequestStatus,
+        priority: r.priority as RequestPriority,
+        assignedAnalystName: r.assignedAnalyst?.fullName ?? null,
+        fechaRequerida,
+        fechaEntrega,
+        createdAt: r.createdAt.toISOString(),
+        sinFechaEntrega: !r.fechaEntrega,
+        vencida: esSolicitudVencida(
+          {
+            status: r.status as RequestStatus,
+            fechaRequerida,
+            fechaEntrega,
+          },
+          ahora,
+        ),
+      };
+    });
   }
 
   private mapToItem(raw: any): SolicitudItem {

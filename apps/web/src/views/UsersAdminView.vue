@@ -254,6 +254,9 @@ onMounted(() => {
           </button>
         </div>
         <p v-if="csvMessage" class="csv-message">{{ csvMessage }}</p>
+        <div v-if="csvPreview?.validRows.length" class="csv-ok">
+          {{ csvPreview.validRows.length }} fila(s) válida(s) lista(s) para importar.
+        </div>
         <div v-if="csvPreview?.errors.length" class="csv-errors">
           <h3>Errores por fila</h3>
           <ul>
@@ -261,9 +264,6 @@ onMounted(() => {
               Fila {{ e.rowNumber }} — {{ e.field }}: {{ e.message }}
             </li>
           </ul>
-        </div>
-        <div v-else-if="csvPreview?.validRows.length" class="csv-ok">
-          {{ csvPreview.validRows.length }} fila(s) válida(s) lista(s) para importar.
         </div>
       </section>
 
