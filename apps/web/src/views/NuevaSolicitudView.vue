@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import DatePicker from 'primevue/datepicker';
+import Textarea from 'primevue/textarea';
+import Button from 'primevue/button';
 import AppLayout from '../layouts/AppLayout.vue';
 import { apiClient } from '../api/client';
-import { RequestCategory, RequestPriority, CATEGORY_LABELS } from '@bnb/shared';
+import {
+  RequestCategory,
+  RequestPriority,
+  CATEGORY_LABELS,
+  fechaCalendarioToIso,
+  esFechaRequeridaPosteriorAHoy,
+} from '@bnb/shared';
 
 const router = useRouter();
 
@@ -12,6 +21,8 @@ const category = ref<RequestCategory>(RequestCategory.EXTRACCION_DATOS);
 const priority = ref<RequestPriority>(RequestPriority.MEDIA);
 const justification = ref('');
 const description = ref('');
+const fechaRequerida = ref<Date | null>(null);
+const camposRequeridos = ref('');
 const submitting = ref(false);
 const errorMessage = ref('');
 
@@ -31,9 +42,38 @@ const priorities = [
   { value: RequestPriority.URGENTE, label: 'Urgente (Comité / Auditoría)' },
 ];
 
+/** Primer día seleccionable: mañana en calendario local del navegador (la API valida America/La_Paz). */
+const minFechaRequerida = computed(() => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 1);
+  return d;
+});
+
+function formatearFechaLarga(isoOrDate: Date): string {
+  return isoOrDate.toLocaleDateString('es-BO', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
 async function handleSubmit() {
   if (!title.value.trim() || !description.value.trim()) {
-    errorMessage.value = 'Por favor complete el título y la descripción detallada del requerimiento.';
+    errorMessage.value = 'Complete el título y la descripción detallada del requerimiento.';
+    return;
+  }
+
+  if (!fechaRequerida.value) {
+    errorMessage.value = 'Indique la fecha en que necesita recibir el dato.';
+    return;
+  }
+
+  const isoFecha = fechaCalendarioToIso(fechaRequerida.value);
+  if (!esFechaRequeridaPosteriorAHoy(isoFecha)) {
+    errorMessage.value =
+      'La fecha requerida debe ser posterior a hoy (regla de negocio: calendario America/La_Paz).';
     return;
   }
 
@@ -47,6 +87,8 @@ async function handleSubmit() {
       category: category.value,
       priority: priority.value,
       justification: justification.value.trim() || undefined,
+      fechaRequerida: isoFecha,
+      camposRequeridos: camposRequeridos.value.trim() || undefined,
     });
 
     const newId = res.data?.id || res.id;
@@ -80,7 +122,8 @@ async function handleSubmit() {
         <div>
           <h1 class="header-title">Registrar Nueva Solicitud</h1>
           <p class="header-subtitle">
-            Ingreso formal de requerimientos analíticos, extracción o proyectos de datos a la Gerencia de Datos BNB.
+            Complete el formulario con el plazo requerido, los campos de data y el alcance técnico. Los adjuntos se
+            cargarán en el siguiente paso del flujo (T7).
           </p>
         </div>
       </div>
@@ -90,75 +133,148 @@ async function handleSubmit() {
         <span>{{ errorMessage }}</span>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="form-card">
-        <div class="form-row">
-          <div class="form-group flex-2">
-            <label for="title">Título del Requerimiento <span class="required">*</span></label>
-            <input
-              id="title"
-              v-model="title"
-              type="text"
-              class="form-control"
-              placeholder="Ej. Extracción de cartera PyME morosa para auditoría ASFI"
+      <form class="form-stack" @submit.prevent="handleSubmit">
+        <!-- Bloque 1: identificación -->
+        <section class="form-card">
+          <h2 class="section-title">
+            <span class="section-accent" />
+            Datos generales
+          </h2>
+
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="title">Título del requerimiento <span class="required">*</span></label>
+              <input
+                id="title"
+                v-model="title"
+                type="text"
+                class="form-control"
+                placeholder="Ej. Extracción de cartera PyME morosa para auditoría ASFI"
+                required
+              />
+            </div>
+
+            <div class="form-group flex-1">
+              <label for="priority">Prioridad <span class="required">*</span></label>
+              <select id="priority" v-model="priority" class="form-control" required>
+                <option v-for="p in priorities" :key="p.value" :value="p.value">
+                  {{ p.label }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="category">Categoría <span class="required">*</span></label>
+              <select id="category" v-model="category" class="form-control" required>
+                <option v-for="cat in categories" :key="cat.value" :value="cat.value">
+                  {{ cat.label }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group flex-1">
+              <label for="justification">Justificación de negocio / ASFI</label>
+              <input
+                id="justification"
+                v-model="justification"
+                type="text"
+                class="form-control"
+                placeholder="Motivo regulatorio, gerencial o normativo (opcional)"
+              />
+            </div>
+          </div>
+        </section>
+
+        <!-- Bloque 2: plazo y campos (mockup 01) -->
+        <section class="form-card form-card-highlight">
+          <h2 class="section-title">
+            <span class="section-accent section-accent-purple" />
+            Plazo y campos solicitados
+          </h2>
+
+          <div class="form-row align-start">
+            <div class="form-group flex-1">
+              <label for="fechaRequerida">Fecha requerida del dato <span class="required">*</span></label>
+              <DatePicker
+                id="fechaRequerida"
+                v-model="fechaRequerida"
+                :min-date="minFechaRequerida"
+                date-format="dd/mm/yy"
+                show-icon
+                fluid
+                placeholder="Seleccione día posterior a hoy"
+                input-class="form-control-datepicker"
+              />
+              <small class="help-text">
+                Día en que necesita el entregable. Debe ser posterior a hoy (validación API en zona
+                <strong>America/La_Paz</strong>).
+              </small>
+              <p v-if="fechaRequerida" class="fecha-preview">
+                Plazo seleccionado: {{ formatearFechaLarga(fechaRequerida) }}
+              </p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="camposRequeridos">Campos o variables requeridas</label>
+            <Textarea
+              id="camposRequeridos"
+              v-model="camposRequeridos"
+              rows="4"
+              class="w-full"
+              placeholder="Liste campos, tablas, filtros o variables. Ej.: saldo, días de mora, fecha_corte, segmento..."
+            />
+            <small class="help-text">Detalle los campos de la data; facilita la estimación del analista.</small>
+          </div>
+        </section>
+
+        <!-- Bloque 3: alcance -->
+        <section class="form-card">
+          <h2 class="section-title">
+            <span class="section-accent" />
+            Descripción y alcance
+          </h2>
+
+          <div class="form-group">
+            <label for="description">Descripción detallada <span class="required">*</span></label>
+            <Textarea
+              id="description"
+              v-model="description"
+              rows="6"
+              class="w-full"
+              placeholder="Período, filtros, formato de entrega, criterios de calidad..."
               required
             />
-            <small class="help-text">Indica un título claro y representativo de la necesidad.</small>
           </div>
+        </section>
 
-          <div class="form-group flex-1">
-            <label for="priority">Prioridad Estimada <span class="required">*</span></label>
-            <select id="priority" v-model="priority" class="form-control" required>
-              <option v-for="p in priorities" :key="p.value" :value="p.value">
-                {{ p.label }}
-              </option>
-            </select>
+        <!-- Placeholder adjuntos (T7) -->
+        <section class="form-card adjuntos-placeholder">
+          <h2 class="section-title">
+            <span class="section-accent section-accent-muted" />
+            Archivos adjuntos
+          </h2>
+          <div class="adjuntos-box">
+            <font-awesome-icon icon="image" class="adjuntos-icon" />
+            <p class="adjuntos-text">
+              La carga de archivos (especificaciones, plantillas, muestras) estará disponible en el <strong>siguiente
+                paso</strong> del registro (tarea T7 — adjuntos).
+            </p>
+            <Button type="button" label="Subir archivos (próximamente)" disabled severity="secondary" />
           </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="category">Categoría de Datos <span class="required">*</span></label>
-            <select id="category" v-model="category" class="form-control" required>
-              <option v-for="cat in categories" :key="cat.value" :value="cat.value">
-                {{ cat.label }}
-              </option>
-            </select>
-            <small class="help-text">Selecciona el tipo de trabajo requerido por tu área.</small>
-          </div>
-
-          <div class="form-group flex-1">
-            <label for="justification">Justificación de Negocio / ASFI</label>
-            <input
-              id="justification"
-              v-model="justification"
-              type="text"
-              class="form-control"
-              placeholder="Ej. Requerido para Comité de Riesgos mensual y reporte regulatorio"
-            />
-            <small class="help-text">Opcional: motivo regulatorio, gerencial o normativo.</small>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="description">Descripción Detallada y Alcance <span class="required">*</span></label>
-          <textarea
-            id="description"
-            v-model="description"
-            rows="6"
-            class="form-control"
-            placeholder="Detalla las variables necesarias, período de análisis, filtros aplicables, formato de entrega esperado..."
-            required
-          ></textarea>
-          <small class="help-text">Sé lo más específico posible para facilitar el análisis del equipo técnico.</small>
-        </div>
+        </section>
 
         <div class="form-actions">
           <router-link to="/solicitudes" class="btn-secondary">Cancelar</router-link>
-          <button type="submit" class="btn-primary" :disabled="submitting">
-            <font-awesome-icon v-if="submitting" icon="spinner" spin />
-            <font-awesome-icon v-else icon="check" />
-            <span>{{ submitting ? 'Registrando en base de datos...' : 'Enviar Solicitud' }}</span>
-          </button>
+          <Button
+            type="submit"
+            label="Enviar solicitud"
+            icon="pi pi-check"
+            :loading="submitting"
+            class="btn-submit"
+          />
         </div>
       </form>
     </div>
@@ -225,6 +341,7 @@ async function handleSubmit() {
   color: #64748b;
   font-size: 0.9rem;
   margin: 0;
+  line-height: 1.45;
 }
 
 .error-banner {
@@ -240,19 +357,58 @@ async function handleSubmit() {
   margin-bottom: 1.5rem;
 }
 
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
 .form-card {
   background: #ffffff;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
-  padding: 2rem;
+  padding: 1.75rem 2rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
+}
+
+.form-card-highlight {
+  border-left: 4px solid var(--bnb-purple);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.section-accent {
+  width: 4px;
+  height: 1.25rem;
+  border-radius: 2px;
+  background: var(--bnb-green);
+}
+
+.section-accent-purple {
+  background: var(--bnb-purple);
+}
+
+.section-accent-muted {
+  background: #cbd5e1;
 }
 
 .form-row {
   display: flex;
   gap: 1.5rem;
+}
+
+.align-start {
+  align-items: flex-start;
 }
 
 .flex-1 {
@@ -297,22 +453,59 @@ async function handleSubmit() {
   box-shadow: 0 0 0 3px rgba(38, 180, 96, 0.15);
 }
 
-textarea.form-control {
-  resize: vertical;
+:deep(.form-control-datepicker) {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
 }
 
 .help-text {
   font-size: 0.78rem;
   color: #94a3b8;
+  line-height: 1.4;
+}
+
+.fecha-preview {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--bnb-purple);
+  font-weight: 600;
+}
+
+.adjuntos-placeholder {
+  opacity: 0.95;
+}
+
+.adjuntos-box {
+  border: 2px dashed #e2e8f0;
+  border-radius: 10px;
+  padding: 1.75rem;
+  text-align: center;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.adjuntos-icon {
+  font-size: 2rem;
+  color: #94a3b8;
+}
+
+.adjuntos-text {
+  max-width: 480px;
+  font-size: 0.9rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
 }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #f1f5f9;
-  margin-top: 0.5rem;
+  padding: 0.5rem 0 2rem;
 }
 
 .btn-secondary {
@@ -326,6 +519,8 @@ textarea.form-control {
   text-decoration: none;
   cursor: pointer;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
 }
 
 .btn-secondary:hover {
@@ -333,35 +528,25 @@ textarea.form-control {
   border-color: #94a3b8;
 }
 
-.btn-primary {
-  padding: 0.75rem 1.5rem;
+:deep(.btn-submit.p-button) {
   background: var(--bnb-green);
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
+  border-color: var(--bnb-green);
   font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: background 0.2s;
 }
 
-.btn-primary:hover:not(:disabled) {
+:deep(.btn-submit.p-button:not(:disabled):hover) {
   background: var(--bnb-green-hover);
+  border-color: var(--bnb-green-hover);
 }
 
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+.w-full {
+  width: 100%;
 }
 
 @media (max-width: 640px) {
   .form-row {
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
 }
 </style>
-

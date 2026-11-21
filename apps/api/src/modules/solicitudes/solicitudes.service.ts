@@ -11,6 +11,7 @@ import {
   RequestPriority,
   ALLOWED_STATUS_TRANSITIONS,
   canEditFechaEntrega,
+  esFechaRequeridaPosteriorAHoy,
   AuditAction,
   SolicitudItem,
   UserSummary,
@@ -27,6 +28,16 @@ export class SolicitudesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateSolicitudDto, user: UserSummary): Promise<SolicitudItem> {
+    // Defensa adicional: la fecha requerida es obligatoria y debe ser futura (America/La_Paz)
+    if (!dto.fechaRequerida?.trim()) {
+      throw new BadRequestException('La fecha requerida es obligatoria');
+    }
+    if (!esFechaRequeridaPosteriorAHoy(dto.fechaRequerida)) {
+      throw new BadRequestException(
+        'La fecha requerida debe ser posterior al día de hoy (calendario America/La_Paz)',
+      );
+    }
+
     const year = new Date().getFullYear();
     const countToday = await this.prisma.solicitud.count();
     const code = `REQ-${year}-${String(countToday + 1).padStart(4, '0')}`;
@@ -42,7 +53,7 @@ export class SolicitudesService {
         requesterId: user.id,
         requesterArea: user.area,
         justification: dto.justification || null,
-        fechaRequerida: dto.fechaRequerida ? new Date(dto.fechaRequerida) : null,
+        fechaRequerida: new Date(dto.fechaRequerida),
         camposRequeridos: dto.camposRequeridos?.trim() || null,
       },
       include: {
