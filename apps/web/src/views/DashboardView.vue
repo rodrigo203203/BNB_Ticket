@@ -2,6 +2,7 @@
 import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AppLayout from '../layouts/AppLayout.vue';
+import DashboardAnalisisPanel from '../components/DashboardAnalisisPanel.vue';
 import { useAuthStore } from '../stores/auth.store';
 import { useDashboardStore } from '../stores/dashboard.store';
 import { Role, STATUS_LABELS } from '@bnb/shared';
@@ -44,6 +45,10 @@ onMounted(async () => {
     </div>
 
     <div v-else-if="dashboardStore.metrics" class="dashboard-content">
+      <DashboardAnalisisPanel
+        v-if="dashboardStore.metrics.role !== Role.SOLICITANTE"
+      />
+
       <!-- 1. VISTA SOLICITANTE -->
       <section v-if="dashboardStore.metrics.role === Role.SOLICITANTE" class="role-section">
         <div class="stats-grid">
@@ -63,9 +68,14 @@ onMounted(async () => {
             <font-awesome-icon icon="circle-check" class="stat-icon icon-green" />
           </div>
           <div class="stat-card">
-            <span class="stat-label">Rechazadas / Canceladas</span>
+            <span class="stat-label">Rechazadas</span>
             <span class="stat-value text-red">{{ dashboardStore.metrics.data.rechazadas }}</span>
             <font-awesome-icon icon="circle-xmark" class="stat-icon icon-red" />
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Canceladas</span>
+            <span class="stat-value text-muted">{{ dashboardStore.metrics.data.canceladas }}</span>
+            <font-awesome-icon icon="ban" class="stat-icon icon-muted" />
           </div>
         </div>
 

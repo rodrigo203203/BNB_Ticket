@@ -17,4 +17,13 @@ export class DashboardController {
   async getMetrics(@CurrentUser() user: UserSummary) {
     return this.dashboardService.getMetricsForUser(user);
   }
+
+  @Get('analisis')
+  @ApiOperation({
+    summary:
+      'Panel analítico operativo (coord/admin todo el universo; analista solo asignadas; solicitante 403)',
+  })
+  async getAnalisis(@CurrentUser() user: UserSummary) {
+    return this.dashboardService.getAnalisisForUser(user);
+  }
 }

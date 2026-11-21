@@ -18,6 +18,14 @@ export function obtenerDiaCalendarioEnZona(
   }).format(fecha);
 }
 
+/** Mes calendario YYYY-MM en la zona de solicitudes. */
+export function obtenerMesCalendarioEnZona(
+  fecha: Date,
+  timeZone: string = ZONA_FECHA_SOLICITUD,
+): string {
+  return obtenerDiaCalendarioEnZona(fecha, timeZone).slice(0, 7);
+}
+
 /**
  * Regla T6: la fecha requerida debe ser estrictamente posterior a hoy
  * (primer día permitido = mañana en calendario America/La_Paz).
