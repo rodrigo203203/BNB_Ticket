@@ -31,6 +31,8 @@ describe('JwtModule y secretos resueltos', () => {
 
     const jwt = module.get(JwtService);
     const config = module.get(ConfigService);
+    expect(config.get<string>('JWT_ACCESS_SECRET')).toBeTruthy();
+    expect(config.get<string>('jwtAccessSecret')).toBe(config.get<string>('JWT_ACCESS_SECRET'));
     const secret = obtenerJwtAccessSecret(config);
     const token = await jwt.signAsync({ sub: 'u1' }, { secret });
     const payload = await jwt.verifyAsync(token, { secret });

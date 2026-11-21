@@ -26,7 +26,8 @@ export interface AppConfig {
   throttleAuthLimit: number;
 }
 
-export function validateEnvironment(config: Record<string, unknown>): AppConfig {
+/** Nest reemplaza la config validada: debemos conservar claves SCREAMING_SNAKE y camelCase. */
+function construirAppConfig(config: Record<string, unknown>): AppConfig {
   const nodeEnv = (config.NODE_ENV as string) || 'development';
   const port = parseInt((config.PORT as string) || '3000', 10);
   const apiPrefix = (config.API_PREFIX as string) || 'api/v1';
@@ -89,5 +90,43 @@ export function validateEnvironment(config: Record<string, unknown>): AppConfig 
     throttleTtl,
     throttleLimit,
     throttleAuthLimit,
+  };
+}
+
+function espejarClavesMayusculas(app: AppConfig): Record<string, string | boolean> {
+  return {
+    NODE_ENV: app.nodeEnv,
+    PORT: String(app.port),
+    DATABASE_URL: app.databaseUrl,
+    API_PREFIX: app.apiPrefix,
+    APP_NAME: app.appName,
+    APP_URL: app.appUrl,
+    JWT_ACCESS_SECRET: app.jwtAccessSecret,
+    JWT_REFRESH_SECRET: app.jwtRefreshSecret,
+    SESSION_COOKIE_SECRET: app.sessionCookieSecret,
+    CSRF_SECRET: app.csrfSecret,
+    JWT_ACCESS_EXPIRATION: app.jwtAccessExpiration,
+    JWT_REFRESH_EXPIRATION: app.jwtRefreshExpiration,
+    SESSION_TTL_HOURS: String(app.sessionTtlHours),
+    MAX_FAILED_LOGIN_ATTEMPTS: String(app.maxFailedAttempts),
+    LOCKOUT_DURATION_MINUTES: String(app.lockoutMinutes),
+    COOKIE_NAME: app.cookieName,
+    COOKIE_SECURE: app.cookieSecure ? 'true' : 'false',
+    COOKIE_SAME_SITE: app.cookieSameSite,
+    COOKIE_DOMAIN: app.cookieDomain,
+    CORS_ORIGIN: app.corsOrigin,
+    THROTTLE_TTL: String(app.throttleTtl),
+    THROTTLE_LIMIT: String(app.throttleLimit),
+    THROTTLE_AUTH_LIMIT: String(app.throttleAuthLimit),
+  };
+}
+
+/** Entrada original + AppConfig camelCase + espejo MAYÚSCULAS para ConfigService.get('DATABASE_URL'). */
+export function validateEnvironment(config: Record<string, unknown>): Record<string, unknown> {
+  const app = construirAppConfig(config);
+  return {
+    ...config,
+    ...app,
+    ...espejarClavesMayusculas(app),
   };
 }

@@ -511,16 +511,30 @@ onMounted(() => {
 .kanban-board {
   display: flex;
   gap: 1rem;
-  overflow-x: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   padding-bottom: 1.5rem;
   align-items: flex-start;
   max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.kanban-board > :deep(.kanban-column) {
+  flex: 0 0 auto;
+  min-width: 280px;
 }
 
 @media (max-width: 768px) {
   .kanban-board {
     flex-direction: column;
     align-items: stretch;
+    overflow-x: hidden;
+  }
+
+  .kanban-board > :deep(.kanban-column) {
+    min-width: 0;
+    width: 100%;
   }
 }
 

@@ -41,6 +41,88 @@ El ZIP incluye `node_modules` completo tras `npm ci` en la máquina de build, po
 
 Si en el futuro se reduce el tamaño del paquete, habrá que usar `npm ci --omit=dev` solo después de confirmar que el API no necesita ningún paquete de desarrollo en tiempo de ejecución (hoy `prisma` CLI no va al servidor si solo se usa `node dist/...`).
 
+## Git Bash (Windows 11, sin PowerShell obligatorio)
+
+Los mismos pasos pueden ejecutarse con **Git Bash**. Scripts equivalentes:
+
+| PowerShell | Git Bash |
+|------------|----------|
+| `.\scripts\offline\build-package.ps1` | `bash scripts/offline/build-package.sh` |
+| `.\scripts\offline\install-server.ps1` | `bash scripts/offline/install-server.sh <zip> [dir]` |
+| `.\scripts\postgres\initdb.ps1` | `bash scripts/postgres/init.sh` |
+| `.\scripts\postgres\start.ps1` | `bash scripts/postgres/start.sh` |
+| `.\scripts\postgres\stop.ps1` | `bash scripts/postgres/stop.sh` |
+| `.\scripts\postgres\create-db.ps1` | `bash scripts/postgres/create-db.sh` |
+
+### Requisitos
+
+- Node.js portable o instalado x64 (major >= 20).
+- PostgreSQL **portable** (zip con `initdb`/`pg_ctl`) **o** servicio Windows (`PG_MODE=service` en `.env` o `postgres.local.config.json`).
+- Un solo `.env` en la **raíz** del monorepo; no hace falta copiarlo a `apps/api/.env` (los comandos `npm run prisma:*`, `seed:admin` y la API leen la raíz vía `cargar-entorno.ts`).
+
+### Secuencia en el servidor (Git Bash)
+
+1. Descomprimir el ZIP (`install-server.sh`) en una ruta **sin espacios problemáticos** o usar comillas: `"/c/Program Files/BNB"`.
+2. `cp .env.example .env` y editar:
+   - `DATABASE_URL` (tras `create-db.sh`).
+   - Secretos: `npm run secretos:generar` (una vez) o pegar valores generados.
+   - `ADMIN_PASSWORD` (mínimo 8 caracteres, misma regla que el login).
+3. PostgreSQL portable:
+   ```bash
+   export PG_BIN="/c/ruta/postgresql-16/bin"
+   export PGDATA="/c/datos/bnb-pgdata"
+   # POSTGRES_SUPERUSER_PASSWORD y BNB_DB_PASSWORD en .env
+   bash scripts/postgres/init.sh
+   bash scripts/postgres/start.sh
+   bash scripts/postgres/create-db.sh
+   ```
+4. Migraciones y admin (desde la raíz del paquete, **sin** `export DATABASE_URL` manual):
+   ```bash
+   npm run prisma:migrate:deploy
+   npm run seed:admin
+   ```
+5. API: `node apps/api/dist/src/main.js` — la SPA en `apps/web/dist` (IIS o `npx serve`).
+6. Proxy Vite (solo desarrollo): el target sigue `VITE_API_PROXY_TARGET` o `PORT` del `.env` raíz (p. ej. `3005`).
+
+### Desbloquear admin (lockout)
+
+Tras varios intentos fallidos de login, la cuenta queda bloqueada. **No** se imprime la contraseña:
+
+```bash
+# Solo desbloquear (intentos en 0)
+npm run admin:reset
+
+# Desbloquear y nueva contraseña (desde .env ADMIN_PASSWORD válida)
+ADMIN_PASSWORD='SuClaveSegura8' npm run admin:reset
+```
+
+### Prisma sin internet ni proxy corporativo
+
+- `schema.prisma` usa `binaryTargets = ["native", "windows"]`.
+- Los engines van dentro de `node_modules` (`.prisma/client` y `@prisma/engines`); el paquete se arma en **Windows x64** con `build-package.sh` / `.ps1`.
+- Los wrappers (`run-prisma-with-env.ts`, scripts de build) definen `PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1` y **quitan** `HTTP_PROXY` / `HTTPS_PROXY` solo para esos procesos.
+- Opcional en servidor: `PRISMA_QUERY_ENGINE_LIBRARY` / `PRISMA_SCHEMA_ENGINE_BINARY` apuntando a los binarios ya incluidos en el paquete.
+
+### Binarios nativos (importante)
+
+| Paquete | Notas |
+|---------|--------|
+| `@node-rs/argon2` | Prebuild **win32-x64**; el ZIP debe generarse en Windows. **No** copiar `node_modules` desde Linux/macOS. |
+| `@prisma/client` | Engine `query_engine-windows.dll.node` incluido tras `prisma generate` en Windows. |
+| bcrypt | No se usa; contraseñas con Argon2id en JS nativo (`@node-rs/argon2`). |
+
+El ZIP **no** incluye ningún `.env` real, solo `.env.example`.
+
+### Solución de problemas
+
+| Síntoma | Causa habitual | Acción |
+|---------|----------------|--------|
+| Login 500 `secretOrPrivateKey must have a value` | Config Nest sin claves MAYÚSCULAS | Actualizar API (`validateEnvironment` fusiona env); solo `.env` raíz + `npm run secretos:generar` |
+| Prisma intenta descargar engines | Proxy corporativo | Quitar proxy en el script; usar paquete pregenerado en Windows |
+| `seed:admin` sale con 1 | `ADMIN_PASSWORD` &lt; 8 caracteres | Corregir `.env` |
+| Cuenta bloqueada | Lockout por intentos | `npm run admin:reset` |
+| Puerto API ocupado | Otro proceso en `PORT` | Cambiar `PORT` en `.env` raíz y proxy Vite |
+
 ## Servidor sin internet
 
 1. Instalar Node.js x64 (misma major que en build).

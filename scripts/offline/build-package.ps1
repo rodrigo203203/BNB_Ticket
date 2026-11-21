@@ -45,6 +45,10 @@ try {
     Write-Host "DATABASE_URL no definida; usando URL ficticia solo para validación/generate." -ForegroundColor DarkYellow
   }
 
+  $proxyKeys = @('HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy')
+  foreach ($k in $proxyKeys) { Remove-Item "Env:$k" -ErrorAction SilentlyContinue }
+  $env:PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING = '1'
+
   Write-Host "→ prisma validate + generate (binaryTargets native + windows)..." -ForegroundColor Yellow
   npm run prisma:validate
   npm run prisma:generate
@@ -70,6 +74,10 @@ try {
     ".env.example",
     "scripts\offline",
     "scripts\postgres",
+    "scripts\generar-secretos.mjs",
+    "scripts\generar-secretos.sh",
+    "docs\instalacion-offline.md",
+    "docs\postgres.md",
     "storage"
   )
 

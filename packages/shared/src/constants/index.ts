@@ -115,6 +115,7 @@ export function canEditFechaEntrega(
 
 export * from './adjuntos.js';
 export * from './gantt-display.js';
+export * from './password-policy.js';
 
 export const AUTH_CONSTANTS = {
   COOKIE_NAME: 'bnb_session',

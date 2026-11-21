@@ -5,6 +5,7 @@
 import { spawnSync } from 'child_process';
 import * as path from 'path';
 import { cargarEntorno } from '../src/config/cargar-entorno';
+import { entornoSinProxy } from '../src/config/entorno-sin-proxy.util';
 
 const apiRoot = path.resolve(__dirname, '..');
 cargarEntorno(path.join(apiRoot, 'src', 'config'));
@@ -18,7 +19,7 @@ if (!prismaArgs.length) {
 const prismaEntry = require.resolve('prisma/build/index.js');
 const resultado = spawnSync(process.execPath, [prismaEntry, ...prismaArgs], {
   cwd: apiRoot,
-  env: process.env,
+  env: entornoSinProxy(process.env),
   stdio: 'inherit',
 });
 

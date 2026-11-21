@@ -74,6 +74,9 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-20 | Credenciales solo en `.env` / variables de entorno; docs con placeholders (`<PG_USER>`, `<PG_PASSWORD>`). |
 | 2026-11-21 | Carga de `.env` antes que el SO: módulo `cargar-entorno.ts` (raíz luego `apps/api/.env`); proxy Vite desde `PORT`/`VITE_API_PROXY_TARGET`; Prisma vía `run-prisma-with-env.ts`. |
 | 2026-11-21 | Secretos JWT/cookie/CSRF: `secretos-entorno.util.ts` (única fuente); defaults solo en dev/test con aviso; `npm run secretos:generar` (`.mjs` + `.sh`/`.ps1`). |
+| 2026-11-21 | `validateEnvironment` conserva claves **MAYÚSCULAS** y camelCase (`config.get('JWT_ACCESS_SECRET')` y `jwtAccessSecret`). |
+| 2026-11-21 | Offline Git Bash: `build-package.sh`, `install-server.sh`, `scripts/postgres/*.sh`; Prisma sin proxy; `admin:reset` para lockout. |
+| 2026-11-21 | Kanban: `overflow-x: auto` en tablero (columnas con `min-width` en desktop). |
 | 2026-11-20 | Agentes Cursor: modelo Composer. |
 | 2026-11-21 | **fecha requerida** obligatoria al crear solicitud; debe ser día calendario **estrictamente posterior a hoy** en zona `America/La_Paz` (no fin de día UTC). Utilidad compartida `esFechaRequeridaPosteriorAHoy` en `@bnb/shared`. |
 | 2026-11-21 | UI T6: `NuevaSolicitudView` con PrimeVue DatePicker, campos requeridos y placeholder adjuntos (T7). Detalle: tarjeta “Fechas del requerimiento” y PATCH fecha entrega según RBAC. Ruta `/solicitudes/nueva` para cualquier rol autenticado. |
@@ -91,7 +94,7 @@ rules/             Reglas de exclusión de contexto para agentes
 | Funcionalidad core | Login, solicitudes (formulario, adjuntos, fechas), Kanban, dashboard básico, admin usuarios, RBAC |
 | BD | Prisma Migrate — migración inicial + campos solicitud/adjuntos/`must_change_password` |
 | Despliegue | Documentado para Windows + IIS; credenciales en docs corregidas en `chore/contexto` |
-| Offline / npm | En PR — scripts `scripts/offline/*.ps1`, docs/instalacion-offline.md, Inter vía @fontsource |
+| Offline / npm | PR `fix/env-first` (#25) — `.ps1` + `.sh`, engines Prisma windows en paquete, docs/instalacion-offline.md |
 | Postgres | Modo **portable** (zip) o **service** (instalador); ver [docs/postgres.md](./docs/postgres.md) |
 | Seed producción | `seed:admin` idempotente; `seed:demo` solo desarrollo (sobrescribe datos demo, no usar en prod) |
 | Release v2 | Rama `release/v2` integra fases 1–3 + postgres dual + QA diseño |

@@ -1,5 +1,6 @@
 import '../src/config/cargar-entorno';
 import { PrismaClient, Role } from '@prisma/client';
+import { esContrasenaAceptableParaLogin, LONGITUD_MINIMA_CONTRASENA } from '@bnb/shared';
 import { hashPassword } from '../src/common/utils/argon2.util';
 import { randomBytes } from 'crypto';
 
@@ -26,6 +27,11 @@ async function main() {
   if (!password) {
     password = generarClaveSegura();
     mostrarUnaVez = true;
+  } else if (!esContrasenaAceptableParaLogin(password)) {
+    console.error(
+      `ADMIN_PASSWORD no cumple la política de login (mínimo ${LONGITUD_MINIMA_CONTRASENA} caracteres). Corrija .env sin mostrar la contraseña en consola.`,
+    );
+    process.exit(1);
   }
 
   const passwordHash = await hashPassword(password);
