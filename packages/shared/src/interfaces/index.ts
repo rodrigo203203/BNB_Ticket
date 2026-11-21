@@ -94,6 +94,20 @@ export interface DashboardAnalisisResumen {
   canceladas: number;
 }
 
+export interface SolicitudGanttItem {
+  id: string;
+  code: string;
+  title: string;
+  status: RequestStatus;
+  priority: RequestPriority;
+  assignedAnalystName: string | null;
+  fechaRequerida: string | null;
+  fechaEntrega: string | null;
+  createdAt: string;
+  /** Sin fecha de entrega comprometida: la barra se dibuja con trazo discontinuo. */
+  sinFechaEntrega: boolean;
+}
+
 export interface DashboardAnalisisStats {
   resumen: DashboardAnalisisResumen;
   porEstado: Record<RequestStatus, number>;
