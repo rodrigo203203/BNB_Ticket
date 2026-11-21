@@ -12,6 +12,7 @@ type UserRecord = {
   area: string;
   isActive: boolean;
   isLocked: boolean;
+  mustChangePassword?: boolean;
   failedAttempts: number;
   lastLoginAt: Date | null;
   createdAt: Date;
@@ -29,6 +30,7 @@ export function mapUserToSummary(user: UserRecord): UserSummary {
     area: user.area,
     isActive: user.isActive,
     isLocked: user.isLocked,
+    mustChangePassword: user.mustChangePassword ?? false,
     failedAttempts: user.failedAttempts,
     lastLoginAt: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
     createdAt: user.createdAt.toISOString(),
