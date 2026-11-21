@@ -20,7 +20,8 @@ describe('parseAndValidateUsersCsv', () => {
       'email,nombre,rol,area\na@bnb.com.bo,Uno,SOLICITANTE,A\na@bnb.com.bo,Dos,SOLICITANTE,A\nexistente@bnb.com.bo,Tres,ANALISTA,B\r\n',
     );
     const result = parseAndValidateUsersCsv(csv, existing);
-    expect(result.validRows).toHaveLength(0);
+    expect(result.validRows).toHaveLength(1);
+    expect(result.validRows[0].email).toBe('a@bnb.com.bo');
     expect(result.errors.some((e) => e.message.includes('Duplicado'))).toBe(true);
     expect(result.errors.some((e) => e.message.includes('ya existe'))).toBe(true);
   });
