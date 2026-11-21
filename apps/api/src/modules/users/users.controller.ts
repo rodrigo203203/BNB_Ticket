@@ -94,7 +94,7 @@ export class UsersController {
     summary: 'Listar usuarios asignables como encargados de tickets (todos excepto rol SOLICITANTE)',
   })
   @ApiResponse({ status: 200, description: 'Listado de analistas/coordinadores/administradores asignables' })
-  async findAssignable(): Promise<Array<{ id: string; fullName: string; email: string; role: Role; area: string }>> {
+  async findAssignable() {
     return this.usersService.findAssignableAnalysts();
   }
 
