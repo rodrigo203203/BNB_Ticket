@@ -21,6 +21,15 @@ describe('validateEnvironment (claves Nest)', () => {
     expect(cfg.databaseUrl).toBe('postgresql://u:p@localhost/db');
   });
 
+  it('sin DATABASE_URL en entrada no añade clave MAYÚSCULA espejada', () => {
+    const cfg = validateEnvironment({
+      NODE_ENV: 'development',
+      ...secretosDev,
+    });
+    expect(cfg.databaseUrl).toContain('postgresql://');
+    expect(cfg.DATABASE_URL).toBeUndefined();
+  });
+
   it('PORT y THROTTLE_TTL accesibles en mayúsculas', () => {
     const cfg = validateEnvironment({
       NODE_ENV: 'development',

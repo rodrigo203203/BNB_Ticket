@@ -124,9 +124,16 @@ function espejarClavesMayusculas(app: AppConfig): Record<string, string | boolea
 /** Entrada original + AppConfig camelCase + espejo MAYÚSCULAS para ConfigService.get('DATABASE_URL'). */
 export function validateEnvironment(config: Record<string, unknown>): Record<string, unknown> {
   const app = construirAppConfig(config);
+  const espejo = espejarClavesMayusculas(app);
+  const teniaDatabaseUrl =
+    typeof config.DATABASE_URL === 'string' && config.DATABASE_URL.trim().length > 0;
+  // No espejar un default de dev a DATABASE_URL: Nest puede propagarlo a process.env y activar Prisma/tests.
+  if (!teniaDatabaseUrl) {
+    delete espejo.DATABASE_URL;
+  }
   return {
     ...config,
     ...app,
-    ...espejarClavesMayusculas(app),
+    ...espejo,
   };
 }

@@ -7,7 +7,9 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from '../src/app.module';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 
-const runIntegration = Boolean(process.env.DATABASE_URL);
+import { hayBaseDeDatosParaTests } from './helpers/hay-base';
+
+const runIntegration = hayBaseDeDatosParaTests();
 
 (runIntegration ? describe : describe.skip)('GET /dashboard/analisis (HTTP)', () => {
   let app: INestApplication;

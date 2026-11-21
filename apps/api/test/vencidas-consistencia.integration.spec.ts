@@ -15,7 +15,9 @@ import {
   UserSummary,
 } from '@bnb/shared';
 
-const run = Boolean(process.env.DATABASE_URL);
+import { hayBaseDeDatosParaTests } from './helpers/hay-base';
+
+const run = hayBaseDeDatosParaTests();
 
 (run ? describe : describe.skip)('vencidas — consistencia entre endpoints (seed)', () => {
   let prisma: PrismaService;

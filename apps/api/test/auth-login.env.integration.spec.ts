@@ -1,20 +1,16 @@
 /**
- * Login HTTP: secretos y DATABASE_URL solo vía archivo .env temporal (sin depender de export manual).
+ * Login HTTP: secretos vía process.env / validate (sin escribir DATABASE_URL por defecto en process.env).
  */
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-import dotenv from 'dotenv';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService, ConfigModule } from '@nestjs/config';
 import request from 'supertest';
 import cookieParser from 'cookie-parser';
-import { ConfigModule } from '@nestjs/config';
 import { AppModule } from '../src/app.module';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 import { validateEnvironment } from '../src/config/env.config';
 import { VALORES_DEV_POR_DEFECTO } from '../src/config/secretos-entorno.util';
+import { hayBaseDeDatosParaTests, urlBaseDeDatosInicial } from './helpers/hay-base';
 
 const CLAVES_SENSIBLES = [
   'JWT_ACCESS_SECRET',
@@ -22,10 +18,11 @@ const CLAVES_SENSIBLES = [
   'SESSION_COOKIE_SECRET',
   'CSRF_SECRET',
   'DATABASE_URL',
+  'THROTTLE_TTL',
 ] as const;
 
-const dbUrl = process.env.DATABASE_URL;
-const runWithDb = Boolean(dbUrl);
+const runWithDb = hayBaseDeDatosParaTests();
+const dbUrlInicial = urlBaseDeDatosInicial();
 
 function guardarYVaciarClaves(): Record<string, string | undefined> {
   const backup: Record<string, string | undefined> = {};
@@ -45,34 +42,24 @@ function restaurarClaves(backup: Record<string, string | undefined>): void {
 
 describe('ConfigService claves MAYÚSCULAS sin export previo', () => {
   let moduleRef: TestingModule;
+  let backup: Record<string, string | undefined>;
 
   afterEach(async () => {
     await moduleRef?.close();
+    restaurarClaves(backup);
   });
 
-  it('JWT_ACCESS_SECRET y THROTTLE_TTL tras validate y dotenv temporal', async () => {
-    const backup = guardarYVaciarClaves();
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bnb-login-env-'));
-    const envPath = path.join(dir, '.env');
+  it('JWT_ACCESS_SECRET y THROTTLE_TTL tras validate sin DATABASE_URL en process.env', async () => {
+    backup = guardarYVaciarClaves();
     const jwtSoloArchivo = 'test_jwt_access_secret_loaded_from_temp_env_40chars!!';
-    fs.writeFileSync(
-      envPath,
-      [
-        'NODE_ENV=development',
-        `DATABASE_URL=${dbUrl || 'postgresql://u:p@127.0.0.1:5432/x'}`,
-        `JWT_ACCESS_SECRET=${jwtSoloArchivo}`,
-        `JWT_REFRESH_SECRET=${VALORES_DEV_POR_DEFECTO.JWT_REFRESH_SECRET}`,
-        `SESSION_COOKIE_SECRET=${VALORES_DEV_POR_DEFECTO.SESSION_COOKIE_SECRET}`,
-        `CSRF_SECRET=${VALORES_DEV_POR_DEFECTO.CSRF_SECRET}`,
-        'THROTTLE_TTL=42',
-      ].join('\n'),
-      'utf8',
-    );
-
-    dotenv.config({ path: envPath, override: true });
+    process.env.NODE_ENV = 'development';
     process.env.JWT_ACCESS_SECRET = jwtSoloArchivo;
+    process.env.JWT_REFRESH_SECRET = VALORES_DEV_POR_DEFECTO.JWT_REFRESH_SECRET;
+    process.env.SESSION_COOKIE_SECRET = VALORES_DEV_POR_DEFECTO.SESSION_COOKIE_SECRET;
+    process.env.CSRF_SECRET = VALORES_DEV_POR_DEFECTO.CSRF_SECRET;
     process.env.THROTTLE_TTL = '42';
-    expect(process.env.JWT_ACCESS_SECRET).toBe(jwtSoloArchivo);
+
+    expect(process.env.DATABASE_URL).toBeUndefined();
 
     moduleRef = await Test.createTestingModule({
       imports: [
@@ -84,12 +71,11 @@ describe('ConfigService claves MAYÚSCULAS sin export previo', () => {
       ],
     }).compile();
     const config = moduleRef.get(ConfigService);
-    expect(config.get<string>('JWT_ACCESS_SECRET')).toBe(process.env.JWT_ACCESS_SECRET);
-    expect(config.get<string>('jwtAccessSecret')).toBe(process.env.JWT_ACCESS_SECRET);
+    expect(config.get<string>('JWT_ACCESS_SECRET')).toBe(jwtSoloArchivo);
+    expect(config.get<string>('jwtAccessSecret')).toBe(jwtSoloArchivo);
     expect(Number(config.get('THROTTLE_TTL'))).toBe(42);
-
-    restaurarClaves(backup);
-    fs.rmSync(dir, { recursive: true, force: true });
+    expect(config.get<string>('databaseUrl')).toContain('postgresql://');
+    expect(process.env.DATABASE_URL).toBeUndefined();
   });
 });
 
@@ -99,21 +85,12 @@ describe('ConfigService claves MAYÚSCULAS sin export previo', () => {
 
   beforeAll(async () => {
     backup = guardarYVaciarClaves();
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bnb-login-http-'));
-    const envPath = path.join(dir, '.env');
-    fs.writeFileSync(
-      envPath,
-      [
-        'NODE_ENV=development',
-        `DATABASE_URL=${dbUrl}`,
-        `JWT_ACCESS_SECRET=${VALORES_DEV_POR_DEFECTO.JWT_ACCESS_SECRET}`,
-        `JWT_REFRESH_SECRET=${VALORES_DEV_POR_DEFECTO.JWT_REFRESH_SECRET}`,
-        `SESSION_COOKIE_SECRET=${VALORES_DEV_POR_DEFECTO.SESSION_COOKIE_SECRET}`,
-        `CSRF_SECRET=${VALORES_DEV_POR_DEFECTO.CSRF_SECRET}`,
-      ].join('\n'),
-      'utf8',
-    );
-    dotenv.config({ path: envPath, override: true });
+    process.env.NODE_ENV = 'development';
+    if (dbUrlInicial) process.env.DATABASE_URL = dbUrlInicial;
+    process.env.JWT_ACCESS_SECRET = VALORES_DEV_POR_DEFECTO.JWT_ACCESS_SECRET;
+    process.env.JWT_REFRESH_SECRET = VALORES_DEV_POR_DEFECTO.JWT_REFRESH_SECRET;
+    process.env.SESSION_COOKIE_SECRET = VALORES_DEV_POR_DEFECTO.SESSION_COOKIE_SECRET;
+    process.env.CSRF_SECRET = VALORES_DEV_POR_DEFECTO.CSRF_SECRET;
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
