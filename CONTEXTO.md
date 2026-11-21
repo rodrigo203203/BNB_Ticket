@@ -96,7 +96,7 @@ rules/             Reglas de exclusión de contexto para agentes
 3. `seed:admin` idempotente (variables `ADMIN_EMAIL`, `ADMIN_PASSWORD`); separar `seed:demo`.
 4. ~~Alta masiva CSV~~ (rama T5).
 5. ~~Campos nuevos en solicitud~~ (T6–T7): fechas, campos y adjuntos.
-6. Dashboard ampliado (T8), Gantt (T9), carga de equipo (T9b), pulido UI (T10).
+6. ~~Dashboard ampliado (T8)~~, ~~Gantt (T9)~~, ~~carga equipo (T9b)~~, ~~pulido UI (T10)~~ — en ramas apiladas fase 3.
 
 **Pendiente explícito (no tocar en T0):**
 
