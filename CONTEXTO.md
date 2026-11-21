@@ -26,6 +26,8 @@ Plataforma corporativa del BNB para registrar, asignar y dar trazabilidad a soli
   - `feat/schema-migraciones` … `feat/usuarios-csv` — modelo, admin, CSV (apiladas).
   - `feat/formulario-solicitud` — formulario nueva solicitud, fecha requerida obligatoria, tarjeta de fechas en detalle.
   - `feat/adjuntos` — API y UI de adjuntos (PDF/XLSX/CSV/DOCX) en alta y detalle.
+  - `feat/dashboard-analisis` — panel operativo con Chart.js, `/dashboard/analisis`, plazos compartidos.
+  - `feat/dashboard-analisis` — panel operativo con Chart.js, `/dashboard/analisis`, plazos compartidos.
 
 ## Estructura
 
@@ -67,6 +69,8 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-21 | **fecha requerida** obligatoria al crear solicitud; debe ser día calendario **estrictamente posterior a hoy** en zona `America/La_Paz` (no fin de día UTC). Utilidad compartida `esFechaRequeridaPosteriorAHoy` en `@bnb/shared`. |
 | 2026-11-21 | UI T6: `NuevaSolicitudView` con PrimeVue DatePicker, campos requeridos y placeholder adjuntos (T7). Detalle: tarjeta “Fechas del requerimiento” y PATCH fecha entrega según RBAC. Ruta `/solicitudes/nueva` para cualquier rol autenticado. |
 | 2026-11-21 | **T7 adjuntos:** subida post-creación en nueva solicitud; panel en detalle (listar/descargar/eliminar en REGISTRADA). Almacenamiento en `storage/uploads/solicitudes/{id}/`. |
+| 2026-11-21 | **T8 análisis:** `GET /dashboard/analisis` (analista asignadas; coord/admin global; solicitante 403). `completadasMes` por `closedAt` en mes America/La_Paz; gráficos PrimeVue Chart + Chart.js. |
+| 2026-11-21 | **T8 análisis:** `GET /dashboard/analisis` (analista asignadas; coord/admin global; solicitante 403). `completadasMes` por `closedAt` en mes America/La_Paz; gráficos PrimeVue Chart + Chart.js. |
 
 ## Estado
 

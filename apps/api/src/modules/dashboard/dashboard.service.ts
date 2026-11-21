@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   Role,
@@ -9,11 +9,39 @@ import {
   DashboardStatsAnalista,
   DashboardStatsCoordinador,
   DashboardStatsAdministrador,
+  DashboardAnalisisStats,
+  obtenerMesCalendarioEnZona,
 } from '@bnb/shared';
+import { computarAnalisisDesdeSolicitudes } from './dashboard-analisis.util';
 
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Panel analítico operativo (boceto 02); solicitante recibe 403. */
+  async getAnalisisForUser(user: UserSummary): Promise<DashboardAnalisisStats> {
+    if (user.role === Role.SOLICITANTE) {
+      throw new ForbiddenException('El dashboard de análisis no está disponible para solicitantes');
+    }
+
+    const where =
+      user.role === Role.ANALISTA
+        ? { assignedAnalystId: user.id }
+        : {};
+
+    const rows = await this.prisma.solicitud.findMany({
+      where,
+      select: {
+        status: true,
+        category: true,
+        fechaRequerida: true,
+        fechaEntrega: true,
+        closedAt: true,
+      },
+    });
+
+    return computarAnalisisDesdeSolicitudes(rows);
+  }
 
   async getMetricsForUser(user: UserSummary): Promise<DashboardStats> {
     switch (user.role) {
@@ -42,7 +70,7 @@ export class DashboardService {
   }
 
   private async getSolicitanteStats(userId: string): Promise<DashboardStatsSolicitante> {
-    const [totalSolicitudes, enProceso, aprobadas, rechazadas, recientes] = await Promise.all([
+    const [totalSolicitudes, enProceso, aprobadas, rechazadas, canceladas, recientes] = await Promise.all([
       this.prisma.solicitud.count({ where: { requesterId: userId } }),
       this.prisma.solicitud.count({
         where: {
@@ -52,6 +80,7 @@ export class DashboardService {
       }),
       this.prisma.solicitud.count({ where: { requesterId: userId, status: RequestStatus.APROBADA } }),
       this.prisma.solicitud.count({ where: { requesterId: userId, status: RequestStatus.RECHAZADA } }),
+      this.prisma.solicitud.count({ where: { requesterId: userId, status: RequestStatus.CANCELADA } }),
       this.prisma.solicitud.findMany({
         where: { requesterId: userId },
         include: { requester: true, assignedAnalyst: true },
@@ -65,16 +94,29 @@ export class DashboardService {
       enProceso,
       aprobadas,
       rechazadas,
+      canceladas,
       misSolicitudesRecientes: recientes.map((r) => this.mapSimple(r)),
     };
   }
 
   private async getAnalistaStats(userId: string): Promise<DashboardStatsAnalista> {
-    const [asignadas, enAnalisis, enRevisionCoordinacion, completadasMes, pendientes] = await Promise.all([
+    const mesActual = obtenerMesCalendarioEnZona(new Date());
+    const aprobadasConCierre = await this.prisma.solicitud.findMany({
+      where: {
+        assignedAnalystId: userId,
+        status: RequestStatus.APROBADA,
+        closedAt: { not: null },
+      },
+      select: { closedAt: true },
+    });
+    const completadasMes = aprobadasConCierre.filter(
+      (s) => s.closedAt && obtenerMesCalendarioEnZona(s.closedAt) === mesActual,
+    ).length;
+
+    const [asignadas, enAnalisis, enRevisionCoordinacion, pendientes] = await Promise.all([
       this.prisma.solicitud.count({ where: { assignedAnalystId: userId } }),
       this.prisma.solicitud.count({ where: { assignedAnalystId: userId, status: RequestStatus.EN_ANALISIS } }),
       this.prisma.solicitud.count({ where: { assignedAnalystId: userId, status: RequestStatus.EN_REVISION_COORDINACION } }),
-      this.prisma.solicitud.count({ where: { assignedAnalystId: userId, status: RequestStatus.APROBADA } }),
       this.prisma.solicitud.findMany({
         where: {
           assignedAnalystId: userId,
