@@ -28,7 +28,7 @@ Plataforma corporativa del BNB para registrar, asignar y dar trazabilidad a soli
   - `feat/adjuntos` — API y UI de adjuntos (PDF/XLSX/CSV/DOCX) en alta y detalle.
   - `feat/dashboard-analisis` — panel operativo con Chart.js, `/dashboard/analisis`, plazos compartidos.
   - `feat/gantt` — ruta `/gantt`, API `GET /solicitudes/gantt`, barras discontinuas sin fecha de entrega.
-  - `feat/carga-equipo` — `/carga-equipo`, `GET /equipo/carga`, assignable con carga ascendente.
+  - `feat/carga-equipo` — vista `/equipo/carga`, `GET /equipo/carga` (analista solo su fila); motivo obligatorio si carga ALTA.
   - `feat/ui-pulido` — foco visible y utilidades CSS de página.
   - `release/bnb-ticket-v2` — integración fase 3 → PR a `main` (sin merge automático).
 
