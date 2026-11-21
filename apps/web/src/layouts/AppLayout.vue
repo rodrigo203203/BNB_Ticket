@@ -22,6 +22,14 @@ const navItems = computed(() => {
     items.splice(4, 0, { label: 'Gantt', path: '/gantt', icon: 'layer-group' });
   }
 
+  if (
+    authStore.user?.role === Role.ANALISTA ||
+    authStore.user?.role === Role.COORDINADOR ||
+    authStore.user?.role === Role.ADMINISTRADOR
+  ) {
+    items.splice(5, 0, { label: 'Carga del equipo', path: '/equipo/carga', icon: 'users-gear' });
+  }
+
   if (authStore.user?.role === Role.ADMINISTRADOR) {
     items.push({ label: 'Gestión Usuarios', path: '/admin/users', icon: 'users' });
   }

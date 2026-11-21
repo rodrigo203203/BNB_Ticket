@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import {
   Role,
   RequestStatus,
+  RequestCategory,
   UserSummary,
   DashboardStats,
   DashboardStatsSolicitante,
@@ -40,7 +41,13 @@ export class DashboardService {
       },
     });
 
-    return computarAnalisisDesdeSolicitudes(rows);
+    return computarAnalisisDesdeSolicitudes(
+      rows.map((r) => ({
+        ...r,
+        status: r.status as RequestStatus,
+        category: r.category as RequestCategory,
+      })),
+    );
   }
 
   async getMetricsForUser(user: UserSummary): Promise<DashboardStats> {

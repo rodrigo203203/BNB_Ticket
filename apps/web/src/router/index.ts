@@ -53,6 +53,15 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/equipo/carga',
+    name: 'CargaEquipo',
+    component: () => import('../views/CargaEquipoView.vue'),
+    meta: {
+      requiresAuth: true,
+      roles: [Role.ANALISTA, Role.COORDINADOR, Role.ADMINISTRADOR],
+    },
+  },
+  {
     path: '/admin/users',
     name: 'UsersAdmin',
     component: () => import('../views/UsersAdminView.vue'),
