@@ -1,3 +1,4 @@
+import '../src/config/cargar-entorno';
 import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { randomBytes } from 'crypto';

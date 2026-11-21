@@ -1,3 +1,4 @@
+import '../src/config/cargar-entorno';
 import { PrismaClient, Role } from '@prisma/client';
 import { hashPassword } from '../src/common/utils/argon2.util';
 import { randomBytes } from 'crypto';

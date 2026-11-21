@@ -16,7 +16,8 @@ import { EquipoModule } from './modules/equipo/equipo.module';
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnvironment,
-      envFilePath: ['.env', '../../.env'],
+      /** Las variables ya fueron cargadas en `cargar-entorno.ts` (precedencia documentada). */
+      ignoreEnvFile: true,
     }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],

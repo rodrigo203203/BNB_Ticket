@@ -1,6 +1,8 @@
 # Módulo compartido: configuración PostgreSQL en modo portable (zip + pg_ctl) o servicio Windows.
 # Contraseñas NUNCA en archivos versionados: usar variables de entorno.
 
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'Load-BnbDotEnv.ps1')
+
 $script:BnbPostgresModes = @('portable', 'service')
 
 function Resolve-BnbPostgresMode {

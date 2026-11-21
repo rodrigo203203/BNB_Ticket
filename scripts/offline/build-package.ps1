@@ -30,6 +30,8 @@ Write-Host "Node detectado: $nodeVersion"
 
 Push-Location $RepoRoot
 try {
+  . (Join-Path $RepoRoot "scripts\Load-BnbDotEnv.ps1")
+
   if (-not (Test-Path "package-lock.json")) {
     throw "Falta package-lock.json. Ejecute 'npm install' en la raíz y commitee el lockfile."
   }

@@ -72,6 +72,7 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-21 | Dev paralelo: `concurrently` en script `npm run dev` (npm workspaces corre en serie). |
 | 2026-11-21 | Postgres portable: config `postgres.local.config.json`; secretos vía `POSTGRES_SUPERUSER_PASSWORD` y `BNB_DB_PASSWORD`. |
 | 2026-11-20 | Credenciales solo en `.env` / variables de entorno; docs con placeholders (`<PG_USER>`, `<PG_PASSWORD>`). |
+| 2026-11-21 | Carga de `.env` antes que el SO: módulo `cargar-entorno.ts` (raíz luego `apps/api/.env`); proxy Vite desde `PORT`/`VITE_API_PROXY_TARGET`; Prisma vía `run-prisma-with-env.ts`. |
 | 2026-11-20 | Agentes Cursor: modelo Composer. |
 | 2026-11-21 | **fecha requerida** obligatoria al crear solicitud; debe ser día calendario **estrictamente posterior a hoy** en zona `America/La_Paz` (no fin de día UTC). Utilidad compartida `esFechaRequeridaPosteriorAHoy` en `@bnb/shared`. |
 | 2026-11-21 | UI T6: `NuevaSolicitudView` con PrimeVue DatePicker, campos requeridos y placeholder adjuntos (T7). Detalle: tarjeta “Fechas del requerimiento” y PATCH fecha entrega según RBAC. Ruta `/solicitudes/nueva` para cualquier rol autenticado. |
