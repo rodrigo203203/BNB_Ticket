@@ -53,7 +53,7 @@ async function main() {
     },
   });
 
-  const coordinador = await prisma.user.create({
+  await prisma.user.create({
     data: {
       email: 'coordinador@bnb.com.bo',
       fullName: 'Valeria Quispe',
