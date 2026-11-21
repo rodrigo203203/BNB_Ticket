@@ -10,21 +10,44 @@ import {
   RequestStatus,
   RequestPriority,
   ALLOWED_STATUS_TRANSITIONS,
+  canEditFechaEntrega,
+  esFechaRequeridaPosteriorAHoy,
   AuditAction,
   SolicitudItem,
+  SolicitudGanttItem,
   UserSummary,
+  esSolicitudVencida,
 } from '@bnb/shared';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { UpdateSolicitudStatusDto } from './dto/update-status.dto';
 import { QuerySolicitudesDto } from './dto/query-solicitudes.dto';
 import { AssignAnalystDto } from './dto/assign-analyst.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
+import { UpdateFechaEntregaDto } from './dto/update-fecha-entrega.dto';
+import { GanttQueryDto } from './dto/gantt-query.dto';
+import { EquipoCargaService } from '../equipo/equipo-carga.service';
 
 @Injectable()
 export class SolicitudesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly equipoCargaService: EquipoCargaService,
+  ) {}
 
   async create(dto: CreateSolicitudDto, user: UserSummary): Promise<SolicitudItem> {
+    // Defensa adicional: la fecha requerida es obligatoria y debe ser futura (America/La_Paz)
+    if (!dto.fechaRequerida?.trim()) {
+      throw new BadRequestException('La fecha requerida es obligatoria');
+    }
+    if (!esFechaRequeridaPosteriorAHoy(dto.fechaRequerida)) {
+      throw new BadRequestException(
+        'La fecha requerida debe ser posterior al día de hoy (calendario America/La_Paz)',
+      );
+    }
+    if (!dto.camposRequeridos?.trim()) {
+      throw new BadRequestException('Los campos de data requeridos son obligatorios');
+    }
+
     const year = new Date().getFullYear();
     const countToday = await this.prisma.solicitud.count();
     const code = `REQ-${year}-${String(countToday + 1).padStart(4, '0')}`;
@@ -40,6 +63,8 @@ export class SolicitudesService {
         requesterId: user.id,
         requesterArea: user.area,
         justification: dto.justification || null,
+        fechaRequerida: new Date(dto.fechaRequerida),
+        camposRequeridos: dto.camposRequeridos.trim(),
       },
       include: {
         requester: true,
@@ -116,7 +141,7 @@ export class SolicitudesService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return items.map((item) => this.mapToItem(item));
+    return items.map((item: (typeof items)[number]) => this.mapToItem(item));
   }
 
   async findOne(id: string, user: UserSummary): Promise<SolicitudItem> {
@@ -129,6 +154,7 @@ export class SolicitudesService {
           include: { author: true },
           orderBy: { createdAt: 'asc' },
         },
+        adjuntos: true,
       },
     });
 
@@ -257,6 +283,13 @@ export class SolicitudesService {
       throw new BadRequestException('El usuario seleccionado se encuentra inactivo en la plataforma.');
     }
 
+    const cargaDestino = await this.equipoCargaService.calcularCargaUsuarioId(analyst.id);
+    if (cargaDestino.nivel === 'alta' && !dto.comment?.trim()) {
+      throw new BadRequestException(
+        'Debe indicar un motivo (instrucción / nota) al asignar a una persona con carga ALTA',
+      );
+    }
+
     const currentStatus = solicitud.status as RequestStatus;
     // Si estaba registrada, pasa automáticamente a EN_ANALISIS al ser asignada
     const newStatus = currentStatus === RequestStatus.REGISTRADA ? RequestStatus.EN_ANALISIS : currentStatus;
@@ -269,9 +302,14 @@ export class SolicitudesService {
       },
     });
 
+    const motivoAlta =
+      cargaDestino.nivel === 'alta'
+        ? ` [Carga ALTA: ${cargaDestino.puntosCarga} pts al momento de asignar]`
+        : '';
+
     const comment = dto.comment?.trim()
-      ? `Asignado a ${analyst.fullName} (${analyst.role}). Nota: ${dto.comment}`
-      : `Asignado formalmente a ${analyst.fullName} (${analyst.role}) por ${user.fullName} (${user.role}).`;
+      ? `Asignado a ${analyst.fullName} (${analyst.role}). Nota: ${dto.comment}${motivoAlta}`
+      : `Asignado formalmente a ${analyst.fullName} (${analyst.role}) por ${user.fullName} (${user.role}).${motivoAlta}`;
 
     await this.prisma.solicitudHistory.create({
       data: {
@@ -288,7 +326,7 @@ export class SolicitudesService {
         userId: user.id,
         userEmail: user.email,
         action: AuditAction.REQUEST_STATUS_UPDATED,
-        details: `Asignación de encargado en ${solicitud.code}: asignado a ${analyst.fullName} (${analyst.email}).`,
+        details: `Asignación de encargado en ${solicitud.code}: asignado a ${analyst.fullName} (${analyst.email}).${dto.comment?.trim() ? ` Motivo: ${dto.comment.trim()}` : ''}${motivoAlta}`,
       },
     }).catch(() => {});
 
@@ -325,6 +363,101 @@ export class SolicitudesService {
     return this.findOne(id, user);
   }
 
+  async updateFechaEntrega(
+    id: string,
+    dto: UpdateFechaEntregaDto,
+    user: UserSummary,
+  ): Promise<SolicitudItem> {
+    const solicitud = await this.prisma.solicitud.findUnique({
+      where: { id },
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException(`Solicitud con ID ${id} no encontrada`);
+    }
+
+    if (
+      !canEditFechaEntrega(user.role, user.id, {
+        assignedAnalystId: solicitud.assignedAnalystId,
+      })
+    ) {
+      throw new ForbiddenException('No tiene permisos para editar la fecha de entrega');
+    }
+
+    await this.prisma.solicitud.update({
+      where: { id },
+      data: {
+        fechaEntrega: new Date(dto.fechaEntrega),
+      },
+    });
+
+    return this.findOne(id, user);
+  }
+
+  /** Datos para diagrama Gantt (boceto 03); solicitante sin acceso. */
+  async findForGantt(user: UserSummary, query: GanttQueryDto = {}): Promise<SolicitudGanttItem[]> {
+    if (user.role === Role.SOLICITANTE) {
+      throw new ForbiddenException('El diagrama Gantt no está disponible para solicitantes');
+    }
+
+    const estadosActivos = [
+      RequestStatus.REGISTRADA,
+      RequestStatus.EN_ANALISIS,
+      RequestStatus.EN_REVISION_COORDINACION,
+    ];
+    const statusFilter = query.statuses?.length
+      ? (query.statuses as RequestStatus[])
+      : estadosActivos;
+
+    const where: Record<string, unknown> = {
+      status: { in: statusFilter },
+    };
+
+    if (user.role === Role.ANALISTA) {
+      where.assignedAnalystId = user.id;
+    } else if (query.analystIds?.length) {
+      where.assignedAnalystId = { in: query.analystIds };
+    }
+
+    if (query.areas?.length) {
+      where.requesterArea = { in: query.areas };
+    }
+
+    const rows = await this.prisma.solicitud.findMany({
+      where: where as any,
+      include: { assignedAnalyst: true },
+      orderBy: [{ fechaRequerida: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    const ahora = new Date();
+    return rows.map((r: (typeof rows)[number]) => {
+      const fechaRequerida = r.fechaRequerida ? r.fechaRequerida.toISOString() : null;
+      const fechaEntrega = r.fechaEntrega ? r.fechaEntrega.toISOString() : null;
+      return {
+        id: r.id,
+        code: r.code,
+        title: r.title,
+        status: r.status as RequestStatus,
+        priority: r.priority as RequestPriority,
+        assignedAnalystName: r.assignedAnalyst?.fullName ?? null,
+        assignedAnalystId: r.assignedAnalystId,
+        requesterArea: r.requesterArea,
+        fechaRequerida,
+        fechaEntrega,
+        createdAt: r.createdAt.toISOString(),
+        sinFechaEntrega: !r.fechaEntrega,
+        vencida: esSolicitudVencida(
+          {
+            status: r.status as RequestStatus,
+            fechaRequerida,
+            fechaEntrega,
+          },
+          ahora,
+        ),
+      };
+    });
+  }
+
   private mapToItem(raw: any): SolicitudItem {
     return {
       id: raw.id,
@@ -341,6 +474,9 @@ export class SolicitudesService {
       assignedAnalystId: raw.assignedAnalystId,
       assignedAnalystName: raw.assignedAnalyst?.fullName || null,
       estimatedHours: raw.estimatedHours,
+      fechaRequerida: raw.fechaRequerida ? raw.fechaRequerida.toISOString() : null,
+      fechaEntrega: raw.fechaEntrega ? raw.fechaEntrega.toISOString() : null,
+      camposRequeridos: raw.camposRequeridos ?? null,
       createdAt: raw.createdAt.toISOString(),
       updatedAt: raw.updatedAt.toISOString(),
       closedAt: raw.closedAt ? raw.closedAt.toISOString() : null,
@@ -353,6 +489,15 @@ export class SolicitudesService {
         newStatus: h.newStatus,
         comment: h.comment,
         createdAt: h.createdAt.toISOString(),
+      })),
+      adjuntos: raw.adjuntos?.map((a: any) => ({
+        id: a.id,
+        solicitudId: a.solicitudId,
+        originalName: a.originalName,
+        mimeType: a.mimeType,
+        sizeBytes: a.sizeBytes,
+        uploadedById: a.uploadedById,
+        createdAt: a.createdAt.toISOString(),
       })),
     };
   }

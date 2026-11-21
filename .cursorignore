@@ -58,3 +58,27 @@ storage/cache/*
 .DS_Store
 Thumbs.db
 
+
+# Imágenes, binarios grandes y fuentes (autohospedadas; no indexar blobs)
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.webp
+**/*.ico
+**/*.svg
+**/*.woff
+**/*.woff2
+**/*.ttf
+**/*.eot
+**/*.bin
+**/*.exe
+**/*.dll
+**/*.so
+**/*.dylib
+**/*.min.js
+**/*.min.css
+
+# Avatares y uploads (binarios de usuario)
+storage/avatars/**
+!storage/avatars/.gitkeep

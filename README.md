@@ -6,7 +6,7 @@ Plataforma corporativa bancaria para la centralización, asignación, trazabilid
 
 ## 🏛️ Stack Tecnológico Implementado
 
-- **Monorepo:** `pnpm` workspaces (`apps/api`, `apps/web`, `packages/shared`).
+- **Monorepo:** `npm` workspaces (`apps/api`, `apps/web`, `packages/shared`).
 - **Frontend (`apps/web`):**
   - Vue 3 (Composition API con `<script setup>` y TypeScript estricto).
   - Vite 5 como bundler optimizado.
@@ -71,7 +71,7 @@ Plataforma corporativa bancaria para la centralización, asignación, trazabilid
 
 ## 👥 Cuentas de Prueba (Seed Sintético)
 
-Todas las cuentas iniciales utilizan la contraseña por defecto: `Password123!`
+En **desarrollo**, `npm run seed:demo` crea datos de prueba (contraseña vía `DEMO_SEED_PASSWORD` o generada en consola). En **producción**, use `npm run seed:admin` una sola vez (variables `ADMIN_EMAIL` / `ADMIN_PASSWORD`).
 
 | Rol | Correo | Nombre | Cargo (seed) | Área |
 | :--- | :--- | :--- | :--- | :--- |
@@ -98,9 +98,10 @@ Todas las cuentas iniciales utilizan la contraseña por defecto: `Password123!`
 ## 🛠️ Instalación y Ejecución
 
 ### Prerrequisitos
-- Node.js >= 20
-- pnpm >= 9
+- Node.js >= 20 (npm incluido)
 - PostgreSQL local en ejecución
+
+Para despliegue **offline en Windows**, ver [docs/instalacion-offline.md](./docs/instalacion-offline.md).
 
 ### 1. Variables de Entorno
 Configurar `.env` con las credenciales de PostgreSQL:
@@ -110,33 +111,36 @@ DATABASE_URL=postgresql://usuario:password@localhost:5432/bnb_tickets_dev?schema
 
 ### 2. Base de Datos y Seed
 ```bash
+# Instalar dependencias (primera vez o tras cambios en lockfile)
+npm ci
+
 # Sincronizar esquema en PostgreSQL
-pnpm --filter @bnb/api prisma db push
+npm exec --workspace=@bnb/api prisma db push
 
 # Poblar datos semilla sintéticos
-pnpm seed
+npm run seed
 ```
 
 ### 3. Ejecutar en Modo Desarrollo
 Inicia frontend (puerto 5173) y backend (puerto 3000) en paralelo:
 ```bash
-pnpm dev
+npm run dev
 ```
 En desarrollo el frontend usa el proxy Vite (`VITE_API_URL=/api/v1`) para cookies, avatares y sesión en la misma origen que la SPA.
 O de forma independiente:
-- Backend: `pnpm dev:api`
-- Frontend: `pnpm dev:web`
+- Backend: `npm run dev:api`
+- Frontend: `npm run dev:web`
 
 ### 4. Pruebas y Compilación
 ```bash
 # Comprobación estricta de tipos TypeScript
-pnpm typecheck
+npm run typecheck
 
 # Pruebas unitarias completas
-pnpm test
+npm run test
 
 # Compilación completa de producción (shared, api, web)
-pnpm build
+npm run build
 ```
 
 ---
@@ -150,5 +154,6 @@ Encuentra guías y manuales especializados en la carpeta [`docs/`](file:///Users
 - [**docs/rbac.md**](file:///Users/rodrigo203/Desarrollo/GerenciaDatos_Ticket/docs/rbac.md): Matriz de permisos por rol, reglas de asignación y transiciones de tickets.
 - [**docs/seguridad.md**](file:///Users/rodrigo203/Desarrollo/GerenciaDatos_Ticket/docs/seguridad.md): Criptografía Argon2id, cookies HttpOnly, CSRF y mitigación de fuerza bruta.
 - [**docs/ticket-workflow.md**](file:///Users/rodrigo203/Desarrollo/GerenciaDatos_Ticket/docs/ticket-workflow.md): Ciclo de vida de solicitudes y máquina de estados.
-- [**docs/deployment-windows.md**](file:///Users/rodrigo203/Desarrollo/GerenciaDatos_Ticket/docs/deployment-windows.md): Despliegue en Windows Server como servicio sin Docker.
+- [**docs/instalacion-offline.md**](./docs/instalacion-offline.md): Empaquetado e instalación sin internet (Windows x64).
+- [**docs/deployment-windows.md**](./docs/deployment-windows.md): Despliegue en Windows Server como servicio sin Docker.
 - [**docs/backup-restore.md**](file:///Users/rodrigo203/Desarrollo/GerenciaDatos_Ticket/docs/backup-restore.md): Estrategia de respaldo y recuperación de PostgreSQL y archivos.

@@ -9,11 +9,12 @@ Esta guía describe el procedimiento para desplegar la Plataforma BNB en un ento
 1. **Node.js LTS (v20 o superior):**
    * Descargar el instalador `.msi` oficial de 64 bits desde [nodejs.org](https://nodejs.org).
    * Verificar en PowerShell: `node -v` y `npm -v`.
-2. **pnpm:**
-   * Instalar globalmente: `npm install -g pnpm`.
-3. **PostgreSQL Server (v14 o superior):**
-   * Instalado como servicio de Windows (`postgresql-x64-16`).
-   * Puerto predeterminado: `5432`.
+2. **npm:** Incluido con Node.js (workspaces en la raíz del monorepo).
+3. **PostgreSQL (v14 o superior, x64)** — elija un modo en `scripts/postgres/postgres.local.config.json` o `PG_MODE`:
+   * **portable:** binarios en ZIP + `pg_ctl` (servidor sin internet). Ver [postgres.md](./postgres.md).
+   * **service:** instalador oficial como servicio Windows (`postgresql-x64-16`, etc.). `initdb.ps1` no aplica.
+   * Scripts comunes: `start.ps1`, `stop.ps1`, `status.ps1`, `create-db.ps1`, `backup.ps1`, `restore.ps1`.
+   * Puerto configurable (por defecto `5432`).
 4. **NSSM (Non-Sucking Service Manager):**
    * Herramienta estándar y recomendada para encapsular procesos Node.js como servicios nativos de Windows con auto-reinicio ante fallos.
    * Descargar desde [nssm.cc](https://nssm.cc/) y colocar el binario `nssm.exe` en `C:\Windows\System32`.
@@ -27,7 +28,7 @@ Esta guía describe el procedimiento para desplegar la Plataforma BNB en un ento
    `D:\Aplicaciones\BNB_GerenciaDatos`
 
 2. **Configuración de Variables de Entorno:**
-   Crear el archivo `.env` en la raíz copiando `.env.example`:
+   Crear el archivo `.env` en la raíz copiando `.env.example`. Todos los secretos (usuario y contraseña de PostgreSQL, JWT, etc.) deben vivir en `.env` o en variables de entorno del servidor — no en documentación ni en el repositorio.
    ```env
    NODE_ENV=production
    PORT=3000
@@ -35,7 +36,8 @@ Esta guía describe el procedimiento para desplegar la Plataforma BNB en un ento
    APP_URL=https://solicitudes-datos.bnb.com.bo
    API_URL=https://solicitudes-datos.bnb.com.bo
 
-   DATABASE_URL=postgresql://rodrigo203:***REMOVED***@localhost:5432/bnb_tickets_dev?schema=public
+   # Sustituir por credenciales reales vía .env o variables de entorno (nunca commitear secretos)
+   DATABASE_URL=postgresql://<PG_USER>:<PG_PASSWORD>@localhost:5432/bnb_tickets_dev?schema=public
 
    JWT_ACCESS_SECRET=clave_segura_de_minimo_32_caracteres_cambiar_en_produccion!
    JWT_REFRESH_SECRET=clave_segura_de_minimo_32_caracteres_cambiar_en_produccion!
@@ -47,18 +49,35 @@ Esta guía describe el procedimiento para desplegar la Plataforma BNB en un ento
    ```
 
 3. **Instalación de Dependencias y Compilación:**
-   Ejecutar en PowerShell como Administrador:
+
+   En servidor **sin internet**, use el paquete generado con [instalacion-offline.md](./instalacion-offline.md) (`scripts/offline/build-package.ps1` en la máquina con red).
+
+   Si hay conectividad en el servidor:
    ```powershell
    cd D:\Aplicaciones\BNB_GerenciaDatos
-   pnpm install --frozen-lockfile
-   pnpm --filter @bnb/api prisma generate
-   pnpm --filter @bnb/api prisma db push
-   pnpm build
+   npm ci
+   npm run prisma:generate
+   npm run prisma:migrate:deploy
+   npm run build
    ```
 
 ---
 
-## 3. Configuración como Servicio de Windows (NSSM)
+## 3. Arranque de PostgreSQL y del API
+
+1. Iniciar BD portable **antes** del API:
+   ```powershell
+   cd D:\Aplicaciones\BNB_GerenciaDatos\scripts\postgres
+   .\start.cmd
+   ```
+2. Aplicar migraciones y seed de admin (solo primera vez o tras actualización):
+   ```powershell
+   cd D:\Aplicaciones\BNB_GerenciaDatos
+   npm run prisma:migrate:deploy
+   npm run seed:admin
+   ```
+
+## 4. Configuración como Servicio de Windows (NSSM)
 
 Para garantizar que la aplicación se inicie automáticamente con el sistema operativo y se reinicie en caso de error:
 
@@ -86,7 +105,7 @@ Para garantizar que la aplicación se inicie automáticamente con el sistema ope
 
 ---
 
-## 4. Configuración del Reverse Proxy en IIS (Internet Information Services)
+## 5. Configuración del Reverse Proxy en IIS (Internet Information Services)
 
 Para exponer la aplicación en el puerto estándar 443 con certificado TLS/SSL institucional del banco:
 

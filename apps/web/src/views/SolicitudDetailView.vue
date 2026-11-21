@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
+import DatePicker from 'primevue/datepicker';
+import Button from 'primevue/button';
+import Tag from 'primevue/tag';
 import AppLayout from '../layouts/AppLayout.vue';
+import SolicitudAdjuntosPanel from '../components/SolicitudAdjuntosPanel.vue';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../stores/auth.store';
 import {
@@ -11,6 +15,15 @@ import {
   Role,
   RequestStatus,
   ALLOWED_STATUS_TRANSITIONS,
+  canEditFechaEntrega,
+  fechaCalendarioToIso,
+  EncargadoConCarga,
+  ROLE_LABELS,
+  STATUS_BADGE_SEVERITY,
+  PRIORITY_LABELS,
+  descripcionEstadoPlazoUi,
+  formatearFechaCalendarioLaPaz,
+  formatearFechaHoraLaPaz,
 } from '@bnb/shared';
 
 const route = useRoute();
@@ -22,7 +35,7 @@ const errorMessage = ref('');
 
 // Modal de Asignación
 const showAssignModal = ref(false);
-const assignableUsers = ref<Array<{ id: string; fullName: string; email: string; role: Role; area: string }>>([]);
+const assignableUsers = ref<EncargadoConCarga[]>([]);
 const selectedAnalystId = ref('');
 const assignComment = ref('');
 const assigning = ref(false);
@@ -37,9 +50,32 @@ const updatingStatus = ref(false);
 const newComment = ref('');
 const addingComment = ref(false);
 
+// Fechas del requerimiento (entrega editable según RBAC)
+const fechaEntregaEdit = ref<Date | null>(null);
+const savingFechaEntrega = ref(false);
+const fechaEntregaError = ref('');
+
 const isManager = computed(() => {
   return authStore.user?.role === Role.COORDINADOR || authStore.user?.role === Role.ADMINISTRADOR;
 });
+
+const selectedAssignable = computed(() =>
+  assignableUsers.value.find((u) => u.id === selectedAnalystId.value),
+);
+
+const requiereMotivoCargaAlta = computed(() => selectedAssignable.value?.nivel === 'alta');
+
+const puedeConfirmarAsignacion = computed(() => {
+  if (!selectedAnalystId.value) return false;
+  if (requiereMotivoCargaAlta.value && !assignComment.value.trim()) return false;
+  return true;
+});
+
+function cargaLabel(u: EncargadoConCarga) {
+  const map: Record<string, string> = { baja: 'Baja', media: 'Media', alta: 'Alta' };
+  const nivel = map[u.nivel] ?? u.nivel;
+  return `${nivel} · ${u.puntosCarga} pts`;
+}
 
 const availableTransitions = computed(() => {
   if (!solicitud.value || !authStore.user) return [];
@@ -48,6 +84,71 @@ const availableTransitions = computed(() => {
   if (!roleTransitions) return [];
   return roleTransitions[current] || [];
 });
+
+const puedeEditarFechaEntrega = computed(() => {
+  if (!solicitud.value || !authStore.user) return false;
+  return canEditFechaEntrega(authStore.user.role, authStore.user.id, {
+    assignedAnalystId: solicitud.value.assignedAnalystId,
+  });
+});
+
+const estadoPlazoUi = computed(() => {
+  if (!solicitud.value?.fechaRequerida) return null;
+  return descripcionEstadoPlazoUi(solicitud.value.fechaRequerida, solicitud.value.fechaEntrega);
+});
+
+const estadoPlazoEsAtraso = computed(() => estadoPlazoUi.value?.tono === 'atraso');
+
+const estadoPlazoEsAmbar = computed(() => estadoPlazoUi.value?.tono === 'ambar');
+
+const lineaUltimaModificacionEntrega = computed(() => {
+  const s = solicitud.value;
+  if (!s?.fechaEntrega) return null;
+  const rol = s.assignedAnalystName
+    ? `Analista (${s.assignedAnalystName})`
+    : 'Gerencia de Datos';
+  return `Última modificación por ${rol} · ${formatearFechaHoraLaPaz(s.updatedAt)}`;
+});
+
+function isoToDateLocal(iso: string | null): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatearSoloFecha(iso: string | null): string {
+  return formatearFechaCalendarioLaPaz(iso);
+}
+
+watch(
+  () => solicitud.value?.fechaEntrega,
+  (iso) => {
+    fechaEntregaEdit.value = isoToDateLocal(iso ?? null);
+  },
+  { immediate: true },
+);
+
+async function guardarFechaEntrega() {
+  if (!solicitud.value || !fechaEntregaEdit.value) {
+    fechaEntregaError.value = 'Seleccione una fecha de entrega válida.';
+    return;
+  }
+
+  savingFechaEntrega.value = true;
+  fechaEntregaError.value = '';
+
+  try {
+    const res = await apiClient.patch<any, any>(`/solicitudes/${solicitud.value.id}/fecha-entrega`, {
+      fechaEntrega: fechaCalendarioToIso(fechaEntregaEdit.value),
+    });
+    solicitud.value = res.data || res;
+  } catch (err: any) {
+    fechaEntregaError.value =
+      err.response?.data?.message || err.message || 'No se pudo guardar la fecha de entrega';
+  } finally {
+    savingFechaEntrega.value = false;
+  }
+}
 
 async function loadSolicitud() {
   loading.value = true;
@@ -63,20 +164,26 @@ async function loadSolicitud() {
   }
 }
 
+const assignListScrollRef = ref<HTMLElement | null>(null);
+
 async function openAssignModal() {
   try {
     const res = await apiClient.get<any, any>('/users/assignable');
     assignableUsers.value = res.data || res || [];
-    selectedAnalystId.value = solicitud.value?.assignedAnalystId || (assignableUsers.value[0]?.id ?? '');
+    selectedAnalystId.value =
+      solicitud.value?.assignedAnalystId || (assignableUsers.value[0]?.id ?? '');
     assignComment.value = '';
     showAssignModal.value = true;
+    await nextTick();
+    assignListScrollRef.value?.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    requestAnimationFrame(() => assignListScrollRef.value?.scrollTo(0, 0));
   } catch (err: any) {
     alert('Error al cargar analistas disponibles: ' + (err.response?.data?.message || err.message));
   }
 }
 
 async function handleAssign() {
-  if (!selectedAnalystId.value || !solicitud.value) return;
+  if (!puedeConfirmarAsignacion.value || !solicitud.value) return;
 
   assigning.value = true;
   try {
@@ -165,19 +272,15 @@ onMounted(() => {
           <div class="header-main">
             <div class="badges-row">
               <span class="ticket-code">{{ solicitud.code }}</span>
-              <span :class="['badge-status', solicitud.status.toLowerCase()]">
-                {{ STATUS_LABELS[solicitud.status] }}
-              </span>
-              <span :class="['priority-pill', solicitud.priority.toLowerCase()]">
-                {{ solicitud.priority }}
-              </span>
-              <span class="category-tag">{{ CATEGORY_LABELS[solicitud.category] }}</span>
+              <Tag :value="STATUS_LABELS[solicitud.status]" :severity="STATUS_BADGE_SEVERITY[solicitud.status]" />
+              <Tag :value="PRIORITY_LABELS[solicitud.priority]" severity="warn" />
+              <Tag :value="CATEGORY_LABELS[solicitud.category]" severity="secondary" />
             </div>
             <h1 class="ticket-title">{{ solicitud.title }}</h1>
             <div class="ticket-meta">
-              <span>Registrado el {{ new Date(solicitud.createdAt).toLocaleString() }}</span>
+              <span>Registrado el {{ formatearFechaHoraLaPaz(solicitud.createdAt) }}</span>
               <span v-if="solicitud.closedAt" class="closed-tag">
-                • Cerrado el {{ new Date(solicitud.closedAt).toLocaleString() }}
+                • Cerrado el {{ formatearFechaHoraLaPaz(solicitud.closedAt) }}
               </span>
             </div>
           </div>
@@ -236,10 +339,99 @@ onMounted(() => {
               </div>
             </div>
 
+            <!-- Fechas del requerimiento (mockup 01 / T6) -->
+            <div class="content-box fechas-card">
+              <h3 class="box-title">
+                <font-awesome-icon icon="clock" />
+                <span>Fechas del requerimiento</span>
+              </h3>
+
+              <div class="fechas-grid">
+                <div class="fecha-item">
+                  <span class="fecha-label">Fecha de registro</span>
+                  <span class="fecha-value">{{ formatearSoloFecha(solicitud.createdAt) }}</span>
+                </div>
+
+                <div class="fecha-item">
+                  <span class="fecha-label">Fecha requerida</span>
+                  <span class="fecha-value fecha-value-purple">
+                    {{ formatearSoloFecha(solicitud.fechaRequerida) }}
+                  </span>
+                </div>
+
+                <div class="fecha-item fecha-item-entrega">
+                  <span class="fecha-label">Fecha de entrega</span>
+                  <template v-if="puedeEditarFechaEntrega">
+                    <DatePicker
+                      v-model="fechaEntregaEdit"
+                      date-format="dd/mm/yy"
+                      show-icon
+                      fluid
+                      append-to="body"
+                      placeholder="dd/mm/aaaa"
+                      input-class="fecha-picker-input"
+                    />
+                    <Button
+                      type="button"
+                      label="Guardar fecha"
+                      icon="pi pi-check"
+                      class="btn-guardar-fecha"
+                      :loading="savingFechaEntrega"
+                      :disabled="!fechaEntregaEdit"
+                      @click="guardarFechaEntrega"
+                    />
+                    <p v-if="fechaEntregaError" class="fecha-error">{{ fechaEntregaError }}</p>
+                  </template>
+                  <span v-else class="fecha-value">
+                    {{ formatearSoloFecha(solicitud.fechaEntrega) }}
+                    <small v-if="!solicitud.fechaEntrega" class="fecha-pendiente">Sin definir</small>
+                  </span>
+                  <p v-if="lineaUltimaModificacionEntrega" class="fecha-modificacion">
+                    {{ lineaUltimaModificacionEntrega }}
+                  </p>
+                </div>
+              </div>
+
+              <div v-if="solicitud.fechaRequerida && estadoPlazoUi" class="plazo-status-row">
+                <span class="plazo-label">Estado de plazo:</span>
+                <span
+                  class="plazo-badge"
+                  :class="{
+                    'plazo-atraso': estadoPlazoEsAtraso,
+                    'plazo-ok': estadoPlazoUi.tono === 'ok',
+                    'plazo-neutro': estadoPlazoUi.tono === 'neutro',
+                    'plazo-ambar': estadoPlazoEsAmbar,
+                  }"
+                >
+                  {{ estadoPlazoUi.texto }}
+                </span>
+              </div>
+            </div>
+
             <!-- Tarjeta de Alcance y Descripción -->
             <div class="content-box">
               <h3 class="box-title">Descripción y Requerimiento Técnico</h3>
               <p class="description-text">{{ solicitud.description }}</p>
+            </div>
+
+            <div class="content-box campos-box">
+              <h3 class="box-title">Campos de data requeridos</h3>
+              <p class="description-text">
+                {{ solicitud.camposRequeridos?.trim() || 'No especificados' }}
+              </p>
+            </div>
+
+            <div class="content-box">
+              <h3 class="box-title">
+                <font-awesome-icon icon="folder" />
+                <span>Archivos adjuntos</span>
+              </h3>
+              <SolicitudAdjuntosPanel
+                :solicitud-id="solicitud.id"
+                :requester-id="solicitud.requesterId"
+                :status="solicitud.status"
+                :initial-adjuntos="solicitud.adjuntos"
+              />
             </div>
 
             <!-- Justificación si existe -->
@@ -295,7 +487,7 @@ onMounted(() => {
                   <div class="timeline-content">
                     <div class="timeline-head">
                       <span class="timeline-author">{{ hist.authorName }}</span>
-                      <span class="timeline-date">{{ new Date(hist.createdAt).toLocaleString() }}</span>
+                      <span class="timeline-date">{{ formatearFechaHoraLaPaz(hist.createdAt) }}</span>
                     </div>
                     <div class="timeline-badge-row">
                       <span :class="['badge-status-sm', hist.newStatus.toLowerCase()]">
@@ -325,25 +517,47 @@ onMounted(() => {
             <em>(Regla: No es posible asignar a usuarios con rol Solicitante)</em>.
           </p>
 
-          <div class="form-group">
-            <label for="analystSelect">Encargado Responsable <span class="required">*</span></label>
-            <select id="analystSelect" v-model="selectedAnalystId" class="form-control" required>
-              <option disabled value="">Seleccione un encargado...</option>
-              <option v-for="u in assignableUsers" :key="u.id" :value="u.id">
-                {{ u.fullName }} — {{ u.role }} ({{ u.area }})
-              </option>
-            </select>
+          <div class="assign-list">
+            <label class="assign-list-label">Encargado responsable <span class="required">*</span></label>
+            <p class="assign-orden-hint">Ordenado de menor a mayor carga</p>
+            <div ref="assignListScrollRef" class="assign-list-scroll">
+            <label
+              v-for="u in assignableUsers"
+              :key="u.id"
+              class="assign-row"
+              :class="{ selected: selectedAnalystId === u.id, 'assign-row--alta': u.nivel === 'alta' }"
+            >
+              <input v-model="selectedAnalystId" type="radio" name="analyst" :value="u.id" />
+              <span class="assign-row-main">
+                <strong>{{ u.fullName }}</strong>
+                <small>{{ ROLE_LABELS[u.role] }} · {{ u.area }}</small>
+                <small class="assign-stats"
+                  >{{ u.activas }} {{ u.activas === 1 ? 'activa' : 'activas' }}, {{ u.vencidas }}
+                  {{ u.vencidas === 1 ? 'vencida' : 'vencidas' }}</small
+                >
+              </span>
+              <span :class="['carga-pill', `carga-pill--${u.nivel}`]">{{ cargaLabel(u) }}</span>
+              <span v-if="u.nivel === 'alta'" class="alta-warning">! Aviso: carga alta</span>
+            </label>
+            </div>
           </div>
 
           <div class="form-group">
-            <label for="assignNote">Instrucción / Nota de Asignación</label>
+            <label for="assignNote">
+              Instrucción / Nota de Asignación
+              <span v-if="requiereMotivoCargaAlta" class="required">*</span>
+            </label>
             <textarea
               id="assignNote"
               v-model="assignComment"
               rows="3"
               class="form-control"
+              :required="requiereMotivoCargaAlta"
               placeholder="Ej. Priorizar variables de cartera y validar cruce ASFI con el solicitante."
             ></textarea>
+            <p v-if="requiereMotivoCargaAlta" class="field-hint">
+              Obligatorio cuando el encargado tiene carga ALTA ({{ selectedAssignable?.puntosCarga }} pts).
+            </p>
           </div>
         </div>
         <div class="modal-footer">
@@ -351,7 +565,7 @@ onMounted(() => {
           <button
             type="button"
             class="btn-primary"
-            :disabled="assigning || !selectedAnalystId"
+            :disabled="assigning || !puedeConfirmarAsignacion"
             @click="handleAssign"
           >
             <font-awesome-icon v-if="assigning" icon="spinner" spin />
@@ -626,6 +840,128 @@ onMounted(() => {
   border-left: 4px solid var(--bnb-purple);
 }
 
+.fechas-card {
+  border-left: 4px solid var(--bnb-green);
+}
+
+.campos-box {
+  border-left: 4px solid #94a3b8;
+}
+
+.fechas-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.fecha-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.fecha-item-entrega {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.fecha-modificacion {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.fecha-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.03em;
+}
+
+.fecha-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.fecha-value-purple {
+  color: var(--bnb-purple);
+}
+
+.fecha-pendiente {
+  display: block;
+  font-weight: 500;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  margin-top: 0.15rem;
+}
+
+.fecha-error {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: #b91c1c;
+}
+
+:deep(.fecha-picker-input) {
+  width: 100%;
+  border-radius: 8px;
+}
+
+:deep(.btn-guardar-fecha.p-button) {
+  margin-top: 0.5rem;
+  background: var(--bnb-purple);
+  border-color: var(--bnb-purple);
+  font-size: 0.85rem;
+}
+
+:deep(.btn-guardar-fecha.p-button:not(:disabled):hover) {
+  background: var(--bnb-purple-hover);
+  border-color: var(--bnb-purple-hover);
+}
+
+.plazo-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.plazo-label {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.plazo-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+}
+
+.plazo-ok {
+  background: var(--bnb-green-light);
+  color: #15803d;
+}
+
+.plazo-atraso {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.plazo-neutro {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.plazo-ambar {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .box-title {
   font-size: 1rem;
   font-weight: 700;
@@ -823,6 +1159,100 @@ onMounted(() => {
   padding: 1rem;
 }
 
+.assign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.assign-orden-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.assign-list-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.assign-list-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.assign-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.assign-row.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.assign-row--alta {
+  border-color: #fecaca;
+}
+
+.assign-row-main strong {
+  display: block;
+}
+
+.assign-row-main small {
+  display: block;
+  color: #64748b;
+}
+
+.assign-stats {
+  margin-top: 0.15rem;
+}
+
+.carga-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+.carga-pill--baja {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.carga-pill--media {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.carga-pill--alta {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.alta-warning {
+  grid-column: 2 / -1;
+  color: #b91c1c;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #b91c1c;
+}
+
 .modal-dialog {
   background: #ffffff;
   border-radius: 12px;
@@ -916,11 +1346,20 @@ onMounted(() => {
   min-width: 0;
 }
 
+@media (max-width: 1200px) {
+  .ticket-body-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  }
+}
+
 @media (max-width: 900px) {
   .ticket-body-grid {
     grid-template-columns: 1fr;
   }
   .cards-duo {
+    grid-template-columns: 1fr;
+  }
+  .fechas-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -9,6 +9,7 @@ import { SolicitudesModule } from './modules/solicitudes/solicitudes.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
+import { EquipoModule } from './modules/equipo/equipo.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { UsersModule } from './modules/users/users.module';
     SessionsModule,
     SolicitudesModule,
     DashboardModule,
+    EquipoModule,
     HealthModule,
   ],
 })

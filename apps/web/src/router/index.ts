@@ -44,10 +44,34 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/gantt',
+    name: 'Gantt',
+    component: () => import('../views/GanttView.vue'),
+    meta: {
+      requiresAuth: true,
+      roles: [Role.ANALISTA, Role.COORDINADOR, Role.ADMINISTRADOR],
+    },
+  },
+  {
+    path: '/equipo/carga',
+    name: 'CargaEquipo',
+    component: () => import('../views/CargaEquipoView.vue'),
+    meta: {
+      requiresAuth: true,
+      roles: [Role.ANALISTA, Role.COORDINADOR, Role.ADMINISTRADOR],
+    },
+  },
+  {
     path: '/admin/users',
     name: 'UsersAdmin',
     component: () => import('../views/UsersAdminView.vue'),
     meta: { requiresAuth: true, roles: [Role.ADMINISTRADOR] },
+  },
+  {
+    path: '/cambio-clave-obligatorio',
+    name: 'ForceChangePassword',
+    component: () => import('../views/ForceChangePasswordView.vue'),
+    meta: { requiresAuth: true, mustChangePasswordOnly: true },
   },
   {
     path: '/profile',
@@ -88,6 +112,15 @@ router.beforeEach(async (to, _from, next) => {
   const isAuthenticated = authStore.isAuthenticated;
 
   if (to.meta.guestOnly && isAuthenticated) {
+    return next('/dashboard');
+  }
+
+  const debeCambiarClave = authStore.user?.mustChangePassword === true;
+  if (isAuthenticated && debeCambiarClave) {
+    if (to.name !== 'ForceChangePassword' && to.name !== 'Login') {
+      return next({ name: 'ForceChangePassword' });
+    }
+  } else if (to.meta.mustChangePasswordOnly) {
     return next('/dashboard');
   }
 

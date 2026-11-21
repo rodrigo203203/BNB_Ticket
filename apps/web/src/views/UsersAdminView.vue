@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
 import { apiClient } from '../api/client';
-import { UserSummary, Role, ROLE_LABELS } from '@bnb/shared';
+import { UserSummary, Role, ROLE_LABELS, formatearFechaHoraLaPaz } from '@bnb/shared';
 
 const users = ref<UserSummary[]>([]);
 const loading = ref(false);
@@ -18,6 +18,12 @@ const newRole = ref<Role>(Role.ANALISTA);
 const newArea = ref('');
 const creating = ref(false);
 const modalError = ref('');
+
+// Importación CSV
+const csvFile = ref<File | null>(null);
+const csvPreview = ref<{ validRows: any[]; errors: Array<{ rowNumber: number; field: string; message: string }> } | null>(null);
+const csvImporting = ref(false);
+const csvMessage = ref('');
 
 const rolesList = [
   { value: Role.SOLICITANTE, label: ROLE_LABELS[Role.SOLICITANTE] },
@@ -36,7 +42,7 @@ async function loadUsers() {
       },
     });
     users.value = res.data || res || [];
-  } catch (err: any) {
+  } catch {
     users.value = [];
   } finally {
     loading.value = false;
@@ -46,7 +52,7 @@ async function loadUsers() {
 function openCreateModal() {
   newEmail.value = '';
   newFullName.value = '';
-  newPassword.value = 'Password123!';
+  newPassword.value = '';
   newRole.value = Role.ANALISTA;
   newArea.value = 'Ingeniería de Datos';
   modalError.value = '';
@@ -124,6 +130,72 @@ const filteredUsers = computed(() => {
   });
 });
 
+function onCsvSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  csvFile.value = input.files?.[0] || null;
+  csvPreview.value = null;
+  csvMessage.value = '';
+}
+
+async function downloadCsvTemplate() {
+  const response = await apiClient.get('/users/import/template', { responseType: 'blob' });
+  const blob = new Blob([response as any], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'plantilla-usuarios-bnb.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function previewCsv() {
+  if (!csvFile.value) {
+    csvMessage.value = 'Seleccione un archivo CSV.';
+    return;
+  }
+  const form = new FormData();
+  form.append('file', csvFile.value);
+  try {
+    const res = await apiClient.post<any, any>('/users/import/preview', form);
+    csvPreview.value = res.data || res;
+    csvMessage.value = '';
+  } catch (err: any) {
+    csvMessage.value = err.response?.data?.message || 'Error al validar el CSV';
+    csvPreview.value = null;
+  }
+}
+
+async function confirmCsvImport() {
+  if (!csvFile.value || !csvPreview.value || csvPreview.value.errors.length > 0) return;
+  csvImporting.value = true;
+  csvMessage.value = '';
+  const form = new FormData();
+  form.append('file', csvFile.value);
+  try {
+    const res = await apiClient.post<any, any>('/users/import', form);
+    const payload = res.data || res;
+    const blob = new Blob([payload.credentialsCsv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'claves-temporales-usuarios.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    csvMessage.value = `Se crearon ${payload.created} usuarios. Descargue y guarde el CSV de claves (no se volverá a mostrar).`;
+    csvFile.value = null;
+    csvPreview.value = null;
+    await loadUsers();
+  } catch (err: any) {
+    csvMessage.value = err.response?.data?.message || 'Error en la importación';
+  } finally {
+    csvImporting.value = false;
+  }
+}
+
+const canConfirmCsv = computed(
+  () => csvPreview.value && csvPreview.value.errors.length === 0 && csvPreview.value.validRows.length > 0,
+);
+
 onMounted(() => {
   loadUsers();
 });
@@ -170,6 +242,37 @@ onMounted(() => {
         </select>
       </div>
 
+      <section class="csv-import-card">
+        <h2 class="csv-title">Carga masiva por CSV</h2>
+        <p class="csv-hint">Columnas: email, nombre, rol, area. UTF-8 con BOM; coma o punto y coma.</p>
+        <div class="csv-actions">
+          <button type="button" class="btn-secondary" @click="downloadCsvTemplate">Descargar plantilla</button>
+          <input type="file" accept=".csv,text/csv" @change="onCsvSelected" />
+          <button type="button" class="btn-secondary" :disabled="!csvFile" @click="previewCsv">Vista previa</button>
+          <button type="button" class="btn-primary" :disabled="!canConfirmCsv || csvImporting" @click="confirmCsvImport">
+            {{
+              csvImporting
+                ? 'Importando...'
+                : csvPreview?.validRows.length
+                  ? `Crear ${csvPreview.validRows.length} usuario(s) válidos`
+                  : 'Confirmar creación'
+            }}
+          </button>
+        </div>
+        <p v-if="csvMessage" class="csv-message">{{ csvMessage }}</p>
+        <div v-if="csvPreview?.validRows.length" class="csv-ok">
+          {{ csvPreview.validRows.length }} fila(s) válida(s) lista(s) para importar.
+        </div>
+        <div v-if="csvPreview?.errors.length" class="csv-errors">
+          <h3>Errores por fila</h3>
+          <ul>
+            <li v-for="(e, idx) in csvPreview!.errors" :key="idx">
+              Fila {{ e.rowNumber }} — {{ e.field }}: {{ e.message }}
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <!-- Tabla de Usuarios -->
       <div class="table-card">
         <table class="data-table data-table--cards">
@@ -214,7 +317,7 @@ onMounted(() => {
                 </span>
               </td>
               <td class="hide-mobile" data-label="Último acceso">
-                {{ u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Sin accesos' }}
+                {{ u.lastLoginAt ? formatearFechaHoraLaPaz(u.lastLoginAt) : 'Sin accesos' }}
               </td>
               <td data-label="Acciones">
                 <div class="action-buttons">
@@ -336,6 +439,43 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.csv-import-card {
+  background: #fff;
+  border: 1px solid var(--bnb-gray-200);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+.csv-title {
+  font-size: 1.05rem;
+  margin-bottom: 0.35rem;
+}
+.csv-hint {
+  color: var(--bnb-gray-600);
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+.csv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+.csv-errors ul {
+  margin-top: 0.5rem;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+.csv-ok {
+  margin-top: 0.75rem;
+  color: var(--bnb-green);
+  font-weight: 500;
+}
+.csv-message {
+  margin-top: 0.75rem;
+  color: var(--bnb-purple);
+}
+
 .users-view {
   max-width: 1200px;
   margin: 0 auto;

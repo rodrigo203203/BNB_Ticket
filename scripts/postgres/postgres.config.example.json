@@ -1,0 +1,12 @@
+{
+  "_comentario": "Copie a scripts/postgres/postgres.local.config.json (ignorado por git). Contraseñas solo por entorno.",
+  "mode": "portable",
+  "serviceName": "postgresql-x64-16",
+  "pgBin": "D:\\PostgreSQL\\pgsql\\bin",
+  "pgData": "D:\\BNB\\postgres\\data",
+  "pgPort": 5432,
+  "superuser": "postgres",
+  "dbName": "bnb_tickets",
+  "dbUser": "bnb_app",
+  "backupDir": "D:\\BNB\\postgres\\backups"
+}

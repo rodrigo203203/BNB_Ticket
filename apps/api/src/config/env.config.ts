@@ -30,7 +30,14 @@ export function validateEnvironment(config: Record<string, unknown>): AppConfig 
   const apiPrefix = (config.API_PREFIX as string) || 'api/v1';
   const appName = (config.APP_NAME as string) || 'BNB Gerencia de Datos - Gestión de Solicitudes';
   const appUrl = (config.APP_URL as string) || 'http://localhost:5173';
-  const databaseUrl = (config.DATABASE_URL as string) || 'postgresql://postgres:postgres@localhost:5432/bnb_tickets_dev?schema=public';
+  const databaseUrlRaw = config.DATABASE_URL as string | undefined;
+  const databaseUrl =
+    databaseUrlRaw ||
+    (nodeEnv === 'production'
+      ? (() => {
+          throw new Error('DATABASE_URL es obligatoria en NODE_ENV=production');
+        })()
+      : 'postgresql://postgres:postgres@localhost:5432/bnb_tickets_dev?schema=public');
 
   const jwtAccessSecret = (config.JWT_ACCESS_SECRET as string) || 'bnb_default_jwt_access_secret_for_dev_only_32_chars!';
   const jwtRefreshSecret = (config.JWT_REFRESH_SECRET as string) || 'bnb_default_jwt_refresh_secret_for_dev_only_32_chars!';

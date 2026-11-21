@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth.store';
 import { ROLE_LABELS, Role } from '@bnb/shared';
@@ -10,6 +10,14 @@ const route = useRoute();
 const authStore = useAuthStore();
 const mobileMenuOpen = ref(false);
 
+/** En móvil el drawer parte cerrado; al cambiar de ruta siempre cerrar. */
+watch(
+  () => route.fullPath,
+  () => {
+    mobileMenuOpen.value = false;
+  },
+);
+
 const navItems = computed(() => {
   const items = [
     { label: 'Dashboard', path: '/dashboard', icon: 'chart-pie' },
@@ -17,6 +25,18 @@ const navItems = computed(() => {
     { label: 'Nueva Solicitud', path: '/solicitudes/nueva', icon: 'plus' },
     { label: 'Tablero Kanban', path: '/kanban', icon: 'table-columns' },
   ];
+
+  if (authStore.user && authStore.user.role !== Role.SOLICITANTE) {
+    items.splice(4, 0, { label: 'Gantt', path: '/gantt', icon: 'layer-group' });
+  }
+
+  if (
+    authStore.user?.role === Role.ANALISTA ||
+    authStore.user?.role === Role.COORDINADOR ||
+    authStore.user?.role === Role.ADMINISTRADOR
+  ) {
+    items.splice(5, 0, { label: 'Carga del equipo', path: '/equipo/carga', icon: 'users-gear' });
+  }
 
   if (authStore.user?.role === Role.ADMINISTRADOR) {
     items.push({ label: 'Gestión Usuarios', path: '/admin/users', icon: 'users' });
@@ -72,6 +92,12 @@ async function handleLogout() {
     </header>
 
     <div class="app-body">
+      <div
+        v-if="mobileMenuOpen"
+        class="sidebar-backdrop"
+        aria-hidden="true"
+        @click="mobileMenuOpen = false"
+      />
       <!-- Barra Lateral / Sidebar -->
       <aside :class="['app-sidebar', { 'mobile-open': mobileMenuOpen }]">
         <div class="sidebar-role-indicator">
@@ -95,7 +121,7 @@ async function handleLogout() {
         </nav>
 
         <div class="sidebar-footer">
-          <small>Plataforma BNB v1.0 (Fase 1)</small>
+          <small>Plataforma BNB v2.0</small>
         </div>
       </aside>
 
@@ -407,12 +433,22 @@ async function handleLogout() {
     bottom: 0;
     left: 0;
     z-index: 50;
-    transform: translateX(-100%);
-    transition: transform 0.25s ease-in-out;
+    width: min(280px, 92vw);
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform 0.25s ease-in-out, visibility 0.25s;
     box-shadow: 4px 0 16px rgba(0,0,0,0.1);
   }
   .app-sidebar.mobile-open {
     transform: translateX(0);
+    visibility: visible;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 64px 0 0 0;
+    z-index: 40;
+    background: rgba(15, 23, 42, 0.35);
   }
   .app-main {
     padding: 1rem;

@@ -237,7 +237,7 @@ export class AuthService {
     const newHashed = await hashPassword(newPass);
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: newHashed },
+      data: { passwordHash: newHashed, mustChangePassword: false },
     });
 
     await this.logAudit({

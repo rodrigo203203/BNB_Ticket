@@ -55,7 +55,8 @@ Todos los endpoints están versionados bajo el prefijo `/api/v1/` y documentados
 | `GET` | `/solicitudes` | Todos | Lista solicitudes con filtros (`search`, `status`, `category`, `priority`). Los solicitantes solo ven sus propios tickets. |
 | `GET` | `/solicitudes/:id` | Todos | Obtiene el detalle técnico y la bitácora completa de eventos de un ticket. |
 | `PATCH` | `/solicitudes/:id/status` | Analista, Coord, Admin | Actualiza el estado respetando la matriz de transiciones RBAC y registra el motivo en la bitácora. |
-| `PATCH` | `/solicitudes/:id/assign` | Coordinador, Admin | Asigna o reasigna el analista encargado (se rechaza a usuarios con rol `SOLICITANTE`). Promueve a `EN_ANALISIS` si estaba `REGISTRADA`. |
+| `GET` | `/solicitudes/gantt` | Analista, Coord, Admin | Datos del diagrama Gantt (boceto 03). Analista solo solicitudes asignadas. `SOLICITANTE` → 403. |
+| `PATCH` | `/solicitudes/:id/assign` | Coordinador, Admin | Asigna o reasigna el analista encargado. Si el encargado tiene **carga ALTA** (≥21 pts, regla boceto 04), el campo `comment` es **obligatorio**; se registra en historial y auditoría. Promueve a `EN_ANALISIS` si estaba `REGISTRADA`. |
 | `POST` | `/solicitudes/:id/comments` | Participantes | Agrega una nota técnica o avance en el historial del requerimiento. |
 
 ---
@@ -65,18 +66,33 @@ Todos los endpoints están versionados bajo el prefijo `/api/v1/` y documentados
 | Método | Ruta | Roles | Descripción |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/users` | Administrador | Lista todos los funcionarios registrados en la plataforma con filtros por rol y búsqueda. |
-| `GET` | `/users/assignable` | Analista, Coord, Admin | Devuelve los usuarios aptos para ser asignados como encargados de tickets (**excluye a usuarios con rol `SOLICITANTE`**). |
+| `GET` | `/users/assignable` | Analista, Coord, Admin | Encargados candidatos con **carga actual** (`puntosCarga`, `nivel`, `activas`, `vencidas`), ordenados de menor a mayor carga. Excluye `SOLICITANTE`. |
 | `POST` | `/users` | Administrador | Da de alta a un nuevo usuario aplicando hash Argon2id y validando unicidad de correo institucional. |
 | `PATCH` | `/users/:id/status` | Administrador | Activa/desactiva cuentas o desbloquea cuentas bloqueadas por fuerza bruta (resetea intentos fallidos). |
 | `GET` | `/users/:id` | Administrador | Obtiene la ficha detallada de un usuario. |
 
 ---
 
-## 5. Endpoints de Dashboard y Sesiones
+## 5. Carga del equipo (`/equipo`)
+
+| Método | Ruta | Roles | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/equipo/carga` | Analista, Coord, Admin | Panel **Carga del equipo** (boceto 04). Coordinador/Administrador ven a todo el personal asignable; **Analista** solo su fila (filtro en API). `SOLICITANTE` → 403. |
+
+**Ruta front:** `/equipo/carga`.
+
+**Puntos por prioridad en solicitudes activas:** BAJA 1, MEDIA 2, ALTA 3, URGENTE 4. Nivel: baja ≤10, media 11–20, alta ≥21 (`PUNTOS_PRIORIDAD_CARGA` y `UMBRALES_NIVEL_CARGA_PUNTOS` en `@bnb/shared`).
+
+**Activas:** `EN_ANALISIS`, `EN_REVISION_COORDINACION`, y `REGISTRADA` con encargado. **Vencida (esta vista):** fecha requerida pasada y sin `fechaEntrega` (distinto del dashboard T8, que también cuenta entregas tardías).
+
+---
+
+## 6. Endpoints de Dashboard y Sesiones
 
 | Método | Ruta | Roles | Descripción |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/dashboard/metrics` | Todos | Métricas operativas consolidadas en backend según el rol del usuario conectado. |
+| `GET` | `/dashboard/analisis` | Analista, Coord, Admin | Panel de análisis operativo (boceto 02). Analista solo asignadas; solicitante 403. |
 | `GET` | `/sessions/me` | Todos | Consulta todas las sesiones activas en base de datos para el usuario conectado. |
 | `DELETE` | `/sessions/:id` | Todos / Admin | Revoca una sesión activa por ID. |
 | `DELETE` | `/sessions/me/others` | Todos | Revoca todas las sesiones activas excepto la sesión actual. |

@@ -20,6 +20,7 @@ import {
   faTriangleExclamation,
   faLayerGroup,
   faUsers,
+  faUsersGear,
   faShieldHalved,
   faDatabase,
   faUserLock,
@@ -54,11 +55,23 @@ import {
   faImage,
 } from '@fortawesome/free-solid-svg-icons';
 
+// Tipografía Inter autohospedada (sin CDNs externos)
+import '@fontsource/inter/300.css';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+
 import App from './App.vue';
 import { router } from './router';
 import { BnbPreset } from './theme/bnb-preset';
+import { localePrimeVueEs } from './locale/primevue-es';
+import { primeOverlayComponents } from './primevue/bootstrap-overlay-components';
 import './assets/main.css';
 import './assets/responsive.css';
+import './assets/primevue-overlays.css';
+
+void primeOverlayComponents;
 
 // Registro de iconos FontAwesome requeridos
 library.add(
@@ -76,6 +89,7 @@ library.add(
   faTriangleExclamation,
   faLayerGroup,
   faUsers,
+  faUsersGear,
   faShieldHalved,
   faDatabase,
   faUserLock,
@@ -115,6 +129,14 @@ const app = createApp(App);
 app.use(createPinia());
 app.use(router);
 app.use(PrimeVue, {
+  locale: localePrimeVueEs,
+  ripple: true,
+  zIndex: {
+    modal: 1200,
+    overlay: 1100,
+    menu: 1000,
+    tooltip: 1100,
+  },
   theme: {
     preset: BnbPreset,
     options: {

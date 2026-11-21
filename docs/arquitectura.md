@@ -2,7 +2,7 @@
 
 ## 1. Visión General del Monorepo
 
-El sistema está estructurado como un monorepo administrado mediante `pnpm workspaces`, desacoplado en capas de responsabilidad única y preparado para ejecutarse de forma 100% autónoma en la intranet corporativa del Banco Nacional de Bolivia (BNB), sin dependencias de Docker, sin CDNs públicas y sin servicios de nube de pago:
+El sistema está estructurado como un monorepo administrado mediante **npm workspaces** (`package.json` raíz), desacoplado en capas de responsabilidad única y preparado para ejecutarse de forma 100% autónoma en la intranet corporativa del Banco Nacional de Bolivia (BNB), sin dependencias de Docker, sin CDNs públicas y sin servicios de nube de pago:
 
 ```text
 GerenciaDatos_Ticket/
@@ -15,7 +15,7 @@ GerenciaDatos_Ticket/
 ├── scripts/             # Scripts de verificación y validación de variables de entorno
 ├── storage/             # Almacenamiento local desacoplado (uploads, logs)
 ├── .env.example         # Plantilla documentada de variables de entorno
-├── pnpm-workspace.yaml  # Configuración del espacio de trabajo pnpm
+├── package-lock.json    # Lockfile npm (versionado; empaquetado offline en Windows)
 └── tsconfig.base.json   # Configuración base estricta de TypeScript
 ```
 

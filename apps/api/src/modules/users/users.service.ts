@@ -5,12 +5,24 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Role, AuditAction, UserSummary } from '@bnb/shared';
+import {
+  Role,
+  AuditAction,
+  UserSummary,
+  SolicitudCargaRow,
+  resumirCargaDesdeSolicitudes,
+  EncargadoConCarga,
+} from '@bnb/shared';
 import { mapUserToSummary } from '../../common/utils/user-summary.util';
 import { hashPassword } from '../../common/utils/argon2.util';
+import { randomBytes } from 'crypto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
-
+import {
+  buildCredentialsCsv,
+  getUsersImportTemplateCsv,
+  parseAndValidateUsersCsv,
+} from './csv-import.util';
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -42,7 +54,7 @@ export class UsersService {
    * Obtiene todos los usuarios que pueden ser asignados como encargados de tickets.
    * Regla de negocio: Se puede asignar a todos los usuarios creados EXCEPTO con el rol de SOLICITANTE.
    */
-  async findAssignableAnalysts(): Promise<Array<{ id: string; fullName: string; email: string; role: Role; area: string }>> {
+  async findAssignableAnalysts(): Promise<EncargadoConCarga[]> {
     const users = await this.prisma.user.findMany({
       where: {
         role: { not: 'SOLICITANTE' as any },
@@ -55,19 +67,51 @@ export class UsersService {
         role: true,
         area: true,
       },
-      orderBy: [
-        { role: 'asc' },
-        { fullName: 'asc' },
-      ],
+      orderBy: [{ fullName: 'asc' }],
     });
 
-    return users.map((u) => ({
-      id: u.id,
-      fullName: u.fullName,
-      email: u.email,
-      role: u.role as unknown as Role,
-      area: u.area,
-    }));
+    const ids = users.map((u) => u.id);
+    const solicitudes = await this.prisma.solicitud.findMany({
+      where: { assignedAnalystId: { in: ids } },
+      select: {
+        status: true,
+        priority: true,
+        fechaRequerida: true,
+        fechaEntrega: true,
+        assignedAnalystId: true,
+      },
+    });
+
+    const porId = new Map<string, SolicitudCargaRow[]>();
+    for (const id of ids) porId.set(id, []);
+    for (const s of solicitudes) {
+      if (!s.assignedAnalystId) continue;
+      porId.get(s.assignedAnalystId)?.push({
+        status: s.status as any,
+        priority: s.priority as any,
+        fechaRequerida: s.fechaRequerida,
+        fechaEntrega: s.fechaEntrega,
+        assignedAnalystId: s.assignedAnalystId,
+      });
+    }
+
+    const conCarga: EncargadoConCarga[] = users.map((u) => {
+      const res = resumirCargaDesdeSolicitudes(porId.get(u.id) ?? []);
+      return {
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        role: u.role as unknown as Role,
+        area: u.area,
+        puntosCarga: res.puntosCarga,
+        nivel: res.nivel,
+        activas: res.activas,
+        vencidas: res.vencidas,
+      };
+    });
+
+    conCarga.sort((a, b) => a.puntosCarga - b.puntosCarga);
+    return conCarga;
   }
 
   async findOne(id: string): Promise<UserSummary> {
@@ -80,6 +124,67 @@ export class UsersService {
     }
 
     return this.mapToSummary(user);
+  }
+
+  getImportTemplate(): string {
+    return getUsersImportTemplateCsv();
+  }
+
+  async previewCsvImport(file: Buffer) {
+    const existing = await this.prisma.user.findMany({ select: { email: true } });
+    const existingEmails = new Set(existing.map((u) => u.email.toLowerCase()));
+    return parseAndValidateUsersCsv(file, existingEmails);
+  }
+
+  async importUsersFromCsv(file: Buffer, currentAdmin: UserSummary) {
+    const validation = await this.previewCsvImport(file);
+    if (validation.errors.length > 0) {
+      throw new BadRequestException({
+        message: 'El CSV tiene errores de validación',
+        errors: validation.errors,
+      });
+    }
+    if (validation.validRows.length === 0) {
+      throw new BadRequestException('No hay filas válidas para importar');
+    }
+
+    const credentials: Array<{ email: string; temporaryPassword: string }> = [];
+
+    const generarClave = () => `Tmp!${randomBytes(9).toString('base64url')}`;
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const row of validation.validRows) {
+        const temporaryPassword = generarClave();
+        const passwordHash = await hashPassword(temporaryPassword);
+        await tx.user.create({
+          data: {
+            email: row.email,
+            fullName: row.fullName,
+            passwordHash,
+            role: row.role as any,
+            area: row.area,
+            mustChangePassword: true,
+            isActive: true,
+            isLocked: false,
+          },
+        });
+        credentials.push({ email: row.email, temporaryPassword });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: currentAdmin.id,
+          userEmail: currentAdmin.email,
+          action: AuditAction.USER_UPDATED,
+          details: `Importación masiva CSV: ${validation.validRows.length} usuarios creados (mustChangePassword=true).`,
+        },
+      });
+    });
+
+    return {
+      created: validation.validRows.length,
+      credentialsCsv: buildCredentialsCsv(credentials),
+    };
   }
 
   async create(dto: CreateUserDto, currentAdmin: UserSummary): Promise<UserSummary> {

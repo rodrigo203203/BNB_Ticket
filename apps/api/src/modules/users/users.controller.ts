@@ -7,7 +7,14 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  Res,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -36,13 +43,58 @@ export class UsersController {
     return this.usersService.findAll(search, role);
   }
 
+  @Get('import/template')
+  @Roles(Role.ADMINISTRADOR)
+  @ApiOperation({ summary: 'Descargar plantilla CSV para importación masiva' })
+  async downloadTemplate(@Res() res: Response) {
+    const csv = this.usersService.getImportTemplate();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="plantilla-usuarios-bnb.csv"');
+    res.send(csv);
+  }
+
+  @Post('import/preview')
+  @Roles(Role.ADMINISTRADOR)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 2 * 1024 * 1024 },
+    }),
+  )
+  @ApiOperation({ summary: 'Vista previa y validación del CSV de usuarios' })
+  async previewImport(@UploadedFile() file?: Express.Multer.File) {
+    if (!file?.buffer) {
+      throw new BadRequestException('Debe adjuntar un archivo CSV en el campo file');
+    }
+    return this.usersService.previewCsvImport(file.buffer);
+  }
+
+  @Post('import')
+  @Roles(Role.ADMINISTRADOR)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 2 * 1024 * 1024 },
+    }),
+  )
+  @ApiOperation({ summary: 'Importar usuarios (transacción única; devuelve CSV con claves temporales)' })
+  async importUsers(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() admin: UserSummary,
+  ) {
+    if (!file?.buffer) {
+      throw new BadRequestException('Debe adjuntar un archivo CSV en el campo file');
+    }
+    return this.usersService.importUsersFromCsv(file.buffer, admin);
+  }
+
   @Get('assignable')
   @Roles(Role.ADMINISTRADOR, Role.COORDINADOR, Role.ANALISTA)
   @ApiOperation({
     summary: 'Listar usuarios asignables como encargados de tickets (todos excepto rol SOLICITANTE)',
   })
   @ApiResponse({ status: 200, description: 'Listado de analistas/coordinadores/administradores asignables' })
-  async findAssignable(): Promise<Array<{ id: string; fullName: string; email: string; role: Role; area: string }>> {
+  async findAssignable() {
     return this.usersService.findAssignableAnalysts();
   }
 

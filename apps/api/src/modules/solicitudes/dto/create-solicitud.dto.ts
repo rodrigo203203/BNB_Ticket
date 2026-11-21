@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { RequestCategory, RequestPriority } from '@bnb/shared';
+import { IsFechaRequeridaFutura } from '../validators/fecha-requerida.validator';
 
 export class CreateSolicitudDto {
   @ApiProperty({
@@ -47,4 +48,23 @@ export class CreateSolicitudDto {
   @IsOptional()
   @IsString()
   justification?: string;
+
+  @ApiProperty({
+    example: '2026-12-01T12:00:00.000Z',
+    description:
+      'Fecha en que el solicitante necesita recibir el dato (obligatoria; día posterior a hoy en America/La_Paz)',
+  })
+  @IsNotEmpty({ message: 'La fecha requerida es obligatoria' })
+  @IsDateString({}, { message: 'fechaRequerida debe ser ISO 8601' })
+  @IsFechaRequeridaFutura()
+  fechaRequerida!: string;
+
+  @ApiProperty({
+    example: 'Campos: saldo, dias_mora, garantia, fecha_corte',
+    description: 'Campos o variables de la data solicitada (obligatorio, Spark M1)',
+  })
+  @IsString({ message: 'Los campos de data deben ser texto' })
+  @IsNotEmpty({ message: 'Los campos de data requeridos son obligatorios' })
+  @MaxLength(4000)
+  camposRequeridos!: string;
 }

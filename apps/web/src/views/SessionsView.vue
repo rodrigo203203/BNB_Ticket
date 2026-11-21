@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
 import { apiClient } from '../api/client';
-import { UserSession } from '@bnb/shared';
+import { UserSession, formatearFechaHoraLaPaz } from '@bnb/shared';
 
 const sessions = ref<UserSession[]>([]);
 const loading = ref(false);
@@ -90,11 +90,11 @@ onMounted(() => {
           </div>
           <div class="detail-row">
             <span>Última Actividad:</span>
-            <span>{{ new Date(s.lastActivityAt).toLocaleString() }}</span>
+            <span>{{ formatearFechaHoraLaPaz(s.lastActivityAt) }}</span>
           </div>
           <div class="detail-row">
             <span>Inició el:</span>
-            <span>{{ new Date(s.createdAt).toLocaleString() }}</span>
+            <span>{{ formatearFechaHoraLaPaz(s.createdAt) }}</span>
           </div>
           <div class="detail-row">
             <span>Expira:</span>
