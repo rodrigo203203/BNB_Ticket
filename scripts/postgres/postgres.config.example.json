@@ -1,5 +1,7 @@
 {
-  "_comentario": "Copie a scripts/postgres/postgres.local.config.json (ignorado por git) o pase parámetros a los scripts.",
+  "_comentario": "Copie a scripts/postgres/postgres.local.config.json (ignorado por git). Contraseñas solo por entorno.",
+  "mode": "portable",
+  "serviceName": "postgresql-x64-16",
   "pgBin": "D:\\PostgreSQL\\pgsql\\bin",
   "pgData": "D:\\BNB\\postgres\\data",
   "pgPort": 5432,

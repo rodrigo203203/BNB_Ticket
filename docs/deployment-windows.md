@@ -10,9 +10,10 @@ Esta guía describe el procedimiento para desplegar la Plataforma BNB en un ento
    * Descargar el instalador `.msi` oficial de 64 bits desde [nodejs.org](https://nodejs.org).
    * Verificar en PowerShell: `node -v` y `npm -v`.
 2. **npm:** Incluido con Node.js (workspaces en la raíz del monorepo).
-3. **PostgreSQL portable (v14 o superior, x64):**
-   * Binarios en ZIP (sin instalador de servicio). Ver [postgres-portable.md](./postgres-portable.md).
-   * Scripts: `scripts/postgres/initdb.ps1`, `start.ps1`, `create-db.ps1`.
+3. **PostgreSQL (v14 o superior, x64)** — elija un modo en `scripts/postgres/postgres.local.config.json` o `PG_MODE`:
+   * **portable:** binarios en ZIP + `pg_ctl` (servidor sin internet). Ver [postgres.md](./postgres.md).
+   * **service:** instalador oficial como servicio Windows (`postgresql-x64-16`, etc.). `initdb.ps1` no aplica.
+   * Scripts comunes: `start.ps1`, `stop.ps1`, `status.ps1`, `create-db.ps1`, `backup.ps1`, `restore.ps1`.
    * Puerto configurable (por defecto `5432`).
 4. **NSSM (Non-Sucking Service Manager):**
    * Herramienta estándar y recomendada para encapsular procesos Node.js como servicios nativos de Windows con auto-reinicio ante fallos.
