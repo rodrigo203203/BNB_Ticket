@@ -65,16 +65,24 @@ if ((Test-Path $envExample) -and (-not (Test-Path $envFile))) {
     Write-Host "Creado .env desde .env.example — configure DATABASE_URL y secretos antes de arrancar." -ForegroundColor Yellow
 }
 
-# --- Enganche PostgreSQL portable (fase posterior) ---
-# Antes de iniciar el API: ejecutar scripts/postgres/start.ps1 y asegurar DATABASE_URL.
+$pgScripts = Join-Path $InstallDir "scripts\postgres"
+$pgStart = Join-Path $pgScripts "start.ps1"
+if (Test-Path $pgStart) {
+    Write-Host "→ Iniciando PostgreSQL portable..." -ForegroundColor Yellow
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $pgStart
+} else {
+    Write-Warning "No se encontró $pgStart. Configure postgres.local.config.json y ejecute start.ps1 manualmente."
+}
+
 Write-Host @"
 
 Próximos pasos (sin red):
-  1. Editar $envFile (DATABASE_URL, JWT, CORS, etc.)
-  2. Iniciar PostgreSQL portable cuando exista scripts/postgres/ (T2)
-  3. Arrancar API:
+  1. Editar $envFile (DATABASE_URL con BNB_DB_USER/BNB_DB_PASSWORD, JWT, CORS, etc.)
+  2. Si es instalación nueva: scripts\postgres\initdb.ps1 y create-db.ps1 (ver docs/postgres-portable.md)
+  3. npm run prisma:migrate:deploy y npm run seed:admin (desde la raíz del paquete)
+  4. Arrancar API:
        cd $InstallDir\apps\api
        node dist\src\main.js
-  4. Servir apps\web\dist con IIS (ver docs/deployment-windows.md)
+  5. Servir apps\web\dist con IIS (docs/deployment-windows.md)
 
 "@ -ForegroundColor Cyan

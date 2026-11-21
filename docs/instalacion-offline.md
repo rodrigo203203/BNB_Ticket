@@ -52,7 +52,7 @@ Si en el futuro se reduce el tamaño del paquete, habrá que usar `npm ci --omit
      -InstallDir "D:\Aplicaciones\BNB_Tickets"
    ```
 3. Editar `.env` (nunca commitear secretos).
-4. **PostgreSQL portable** (fase T2): antes del API, ejecutar `scripts/postgres/start.ps1` (aún no incluido). Hoy asuma una instancia PostgreSQL accesible vía `DATABASE_URL`.
+4. **PostgreSQL portable**: ver [postgres-portable.md](./postgres-portable.md). Primera vez: `initdb.ps1` → `start.ps1` → `create-db.ps1`. En cada arranque: `start.ps1` antes del API.
 5. Arrancar API:
    ```powershell
    cd D:\Aplicaciones\BNB_Tickets\apps\api

@@ -10,9 +10,10 @@ Esta guía describe el procedimiento para desplegar la Plataforma BNB en un ento
    * Descargar el instalador `.msi` oficial de 64 bits desde [nodejs.org](https://nodejs.org).
    * Verificar en PowerShell: `node -v` y `npm -v`.
 2. **npm:** Incluido con Node.js (workspaces en la raíz del monorepo).
-3. **PostgreSQL Server (v14 o superior):**
-   * Instalado como servicio de Windows (`postgresql-x64-16`).
-   * Puerto predeterminado: `5432`.
+3. **PostgreSQL portable (v14 o superior, x64):**
+   * Binarios en ZIP (sin instalador de servicio). Ver [postgres-portable.md](./postgres-portable.md).
+   * Scripts: `scripts/postgres/initdb.ps1`, `start.ps1`, `create-db.ps1`.
+   * Puerto configurable (por defecto `5432`).
 4. **NSSM (Non-Sucking Service Manager):**
    * Herramienta estándar y recomendada para encapsular procesos Node.js como servicios nativos de Windows con auto-reinicio ante fallos.
    * Descargar desde [nssm.cc](https://nssm.cc/) y colocar el binario `nssm.exe` en `C:\Windows\System32`.
@@ -55,13 +56,27 @@ Esta guía describe el procedimiento para desplegar la Plataforma BNB en un ento
    cd D:\Aplicaciones\BNB_GerenciaDatos
    npm ci
    npm run prisma:generate
-   npm exec --workspace=@bnb/api prisma db push
+   npm run prisma:migrate:deploy
    npm run build
    ```
 
 ---
 
-## 3. Configuración como Servicio de Windows (NSSM)
+## 3. Arranque de PostgreSQL y del API
+
+1. Iniciar BD portable **antes** del API:
+   ```powershell
+   cd D:\Aplicaciones\BNB_GerenciaDatos\scripts\postgres
+   .\start.cmd
+   ```
+2. Aplicar migraciones y seed de admin (solo primera vez o tras actualización):
+   ```powershell
+   cd D:\Aplicaciones\BNB_GerenciaDatos
+   npm run prisma:migrate:deploy
+   npm run seed:admin
+   ```
+
+## 4. Configuración como Servicio de Windows (NSSM)
 
 Para garantizar que la aplicación se inicie automáticamente con el sistema operativo y se reinicie en caso de error:
 
@@ -89,7 +104,7 @@ Para garantizar que la aplicación se inicie automáticamente con el sistema ope
 
 ---
 
-## 4. Configuración del Reverse Proxy en IIS (Internet Information Services)
+## 5. Configuración del Reverse Proxy en IIS (Internet Information Services)
 
 Para exponer la aplicación en el puerto estándar 443 con certificado TLS/SSL institucional del banco:
 

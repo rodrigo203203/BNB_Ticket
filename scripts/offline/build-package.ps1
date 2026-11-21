@@ -67,6 +67,7 @@ try {
     "packages\shared\dist",
     ".env.example",
     "scripts\offline",
+    "scripts\postgres",
     "storage"
   )
 

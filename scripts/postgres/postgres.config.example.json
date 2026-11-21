@@ -1,0 +1,10 @@
+{
+  "_comentario": "Copie a scripts/postgres/postgres.local.config.json (ignorado por git) o pase parámetros a los scripts.",
+  "pgBin": "D:\\PostgreSQL\\pgsql\\bin",
+  "pgData": "D:\\BNB\\postgres\\data",
+  "pgPort": 5432,
+  "superuser": "postgres",
+  "dbName": "bnb_tickets",
+  "dbUser": "bnb_app",
+  "backupDir": "D:\\BNB\\postgres\\backups"
+}
