@@ -113,6 +113,8 @@ export function canEditFechaEntrega(
   return false;
 }
 
+export * from './adjuntos.js';
+
 export const AUTH_CONSTANTS = {
   COOKIE_NAME: 'bnb_session',
   CSRF_HEADER_NAME: 'x-csrf-token',
