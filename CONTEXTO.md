@@ -24,6 +24,7 @@ Plataforma corporativa del BNB para registrar, asignar y dar trazabilidad a soli
   - `chore/npm-offline` — npm workspaces, empaquetado offline, Inter local.
   - `chore/postgres-portable` — PostgreSQL zip + scripts PowerShell.
   - `feat/schema-migraciones` … `feat/usuarios-csv` — modelo, admin, CSV (apiladas).
+  - `feat/formulario-solicitud` — formulario nueva solicitud, fecha requerida obligatoria, tarjeta de fechas en detalle.
 
 ## Estructura
 
@@ -62,12 +63,14 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-21 | Postgres portable: config `postgres.local.config.json`; secretos vía `POSTGRES_SUPERUSER_PASSWORD` y `BNB_DB_PASSWORD`. |
 | 2026-11-20 | Credenciales solo en `.env` / variables de entorno; docs con placeholders (`<PG_USER>`, `<PG_PASSWORD>`). |
 | 2026-11-20 | Agentes Cursor: modelo Composer. |
+| 2026-11-21 | **fecha requerida** obligatoria al crear solicitud; debe ser día calendario **estrictamente posterior a hoy** en zona `America/La_Paz` (no fin de día UTC). Utilidad compartida `esFechaRequeridaPosteriorAHoy` en `@bnb/shared`. |
+| 2026-11-21 | UI T6: `NuevaSolicitudView` con PrimeVue DatePicker, campos requeridos y placeholder adjuntos (T7). Detalle: tarjeta “Fechas del requerimiento” y PATCH fecha entrega según RBAC. Ruta `/solicitudes/nueva` para cualquier rol autenticado. |
 
 ## Estado
 
 | Área | Situación |
 |------|-----------|
-| Funcionalidad core | Login, solicitudes, Kanban, dashboard básico, admin usuarios, RBAC |
+| Funcionalidad core | Login, solicitudes (formulario con fecha/campos), Kanban, dashboard básico, admin usuarios, RBAC |
 | BD | Prisma Migrate — migración inicial + campos solicitud/adjuntos/`must_change_password` |
 | Despliegue | Documentado para Windows + IIS; credenciales en docs corregidas en `chore/contexto` |
 | Offline / npm | En PR — scripts `scripts/offline/*.ps1`, docs/instalacion-offline.md, Inter vía @fontsource |
@@ -82,7 +85,7 @@ rules/             Reglas de exclusión de contexto para agentes
 2. Prisma Migrate + campos solicitud/adjuntos (T3).
 3. `seed:admin` idempotente (variables `ADMIN_EMAIL`, `ADMIN_PASSWORD`); separar `seed:demo`.
 4. ~~Alta masiva CSV~~ (rama T5).
-5. Campos nuevos en solicitud: *fecha requerida* (cuando el solicitante necesita el dato), *fecha de entrega* (analista; editable coordinador/admin), listado de campos, adjuntos.
+5. ~~Campos nuevos en solicitud~~ (parcial T6): *fecha requerida* y *campos* en alta; *fecha de entrega* en detalle; **adjuntos** pendiente T7.
 6. Dashboard ampliado, Gantt, mejoras de UI.
 
 **Pendiente explícito (no tocar en T0):**
