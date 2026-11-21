@@ -71,7 +71,7 @@ Plataforma corporativa bancaria para la centralización, asignación, trazabilid
 
 ## 👥 Cuentas de Prueba (Seed Sintético)
 
-Todas las cuentas iniciales utilizan la contraseña por defecto: `Password123!`
+En **desarrollo**, `npm run seed:demo` crea datos de prueba (contraseña vía `DEMO_SEED_PASSWORD` o generada en consola). En **producción**, use `npm run seed:admin` una sola vez (variables `ADMIN_EMAIL` / `ADMIN_PASSWORD`).
 
 | Rol | Correo | Nombre | Cargo (seed) | Área |
 | :--- | :--- | :--- | :--- | :--- |

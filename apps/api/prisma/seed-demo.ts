@@ -1,10 +1,16 @@
+import { randomBytes } from 'crypto';
 import { PrismaClient, Role, RequestStatus, RequestPriority, RequestCategory, AuditAction } from '@prisma/client';
 import { hashPassword } from '../src/common/utils/argon2.util';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Iniciando seed sintético para Plataforma BNB...');
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ seed-demo no puede ejecutarse en producción (NODE_ENV=production).');
+    process.exit(1);
+  }
+
+  console.log('🌱 Iniciando seed sintético para Plataforma BNB (solo desarrollo)...');
 
   // Limpiar datos existentes respetando orden de dependencias
   await prisma.solicitudHistory.deleteMany();
@@ -13,7 +19,9 @@ async function main() {
   await prisma.auditLog.deleteMany();
   await prisma.user.deleteMany();
 
-  const defaultPassword = 'Password123!';
+  const defaultPassword =
+    process.env.DEMO_SEED_PASSWORD ||
+    `Demo!${randomBytes(10).toString('base64url')}`;
   const hashedPassword = await hashPassword(defaultPassword);
 
   // 1. Usuarios representativos de cada rol

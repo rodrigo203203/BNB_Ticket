@@ -3,6 +3,7 @@ import {
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -10,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { ALLOW_MUST_CHANGE_PASSWORD_KEY } from '../decorators/allow-must-change-password.decorator';
 import { mapUserToSummary } from '../utils/user-summary.util';
 
 @Injectable()
@@ -98,6 +100,16 @@ export class JwtAuthGuard implements CanActivate {
 
       request.user = mapUserToSummary(user);
       request.sessionId = session.id;
+
+      const allowMustChange = this.reflector.getAllAndOverride<boolean>(ALLOW_MUST_CHANGE_PASSWORD_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
+      if (user.mustChangePassword && !allowMustChange) {
+        throw new ForbiddenException(
+          'Debe cambiar su contraseña antes de continuar.',
+        );
+      }
 
       return true;
     } catch (error) {

@@ -46,7 +46,7 @@ async function loadUsers() {
 function openCreateModal() {
   newEmail.value = '';
   newFullName.value = '';
-  newPassword.value = 'Password123!';
+  newPassword.value = '';
   newRole.value = Role.ANALISTA;
   newArea.value = 'Ingeniería de Datos';
   modalError.value = '';
