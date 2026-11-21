@@ -36,7 +36,7 @@ async function loadUsers() {
       },
     });
     users.value = res.data || res || [];
-  } catch (err: any) {
+  } catch {
     users.value = [];
   } finally {
     loading.value = false;

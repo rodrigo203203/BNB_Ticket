@@ -8,7 +8,7 @@ Plataforma corporativa del BNB para registrar, asignar y dar trazabilidad a soli
 
 | Capa | Tecnología |
 |------|------------|
-| Monorepo | pnpm workspaces → migración planificada a npm (rama `chore/npm-offline`) |
+| Monorepo | npm workspaces + `package-lock.json` (rama `chore/npm-offline`) |
 | Frontend | Vue 3.5, Vite 5, Pinia, Vue Router, PrimeVue 4, Axios |
 | Backend | NestJS 10, Prisma 5, PostgreSQL |
 | Shared | `packages/shared` — enums, DTOs, matriz RBAC |
@@ -55,6 +55,8 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-20 | PostgreSQL portable (zip) en lugar de servicio Windows — documentar y automatizar en fase T2. |
 | 2026-11-20 | Inter local; eliminar dependencia de CDNs de fuentes. |
 | 2026-11-20 | Migración pnpm → npm con `package-lock.json` versionado y scripts PowerShell de empaquetado. |
+| 2026-11-21 | `binaryTargets` Prisma: `native` + `windows`; eliminadas optionalDependencies darwin en api/web. |
+| 2026-11-21 | Dev paralelo: `concurrently` en script `npm run dev` (npm workspaces corre en serie). |
 | 2026-11-20 | Credenciales solo en `.env` / variables de entorno; docs con placeholders (`<PG_USER>`, `<PG_PASSWORD>`). |
 | 2026-11-20 | Agentes Cursor: modelo Composer. |
 
@@ -65,7 +67,7 @@ rules/             Reglas de exclusión de contexto para agentes
 | Funcionalidad core | Login, solicitudes, Kanban, dashboard básico, admin usuarios, RBAC |
 | BD | `prisma db push` (sin migraciones versionadas aún) |
 | Despliegue | Documentado para Windows + IIS; credenciales en docs corregidas en `chore/contexto` |
-| Offline / npm | Pendiente — rama `chore/npm-offline` |
+| Offline / npm | En PR — scripts `scripts/offline/*.ps1`, docs/instalacion-offline.md, Inter vía @fontsource |
 | Postgres portable | No iniciado |
 | Seed producción | Pendiente — seed admin idempotente; **no** usar seed destructivo de demo en prod |
 
@@ -91,6 +93,7 @@ rules/             Reglas de exclusión de contexto para agentes
 - [README.md](./README.md)
 - [docs/arquitectura.md](./docs/arquitectura.md)
 - [docs/deployment-windows.md](./docs/deployment-windows.md)
+- [docs/instalacion-offline.md](./docs/instalacion-offline.md)
 - [docs/backup-restore.md](./docs/backup-restore.md)
 - [rules/ignore-rules.md](./rules/ignore-rules.md) — detalle de exclusiones para agentes
 - Plan de análisis (referencia interna): `uploads/bnb_ticket_plan.md`

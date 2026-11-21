@@ -12,13 +12,14 @@
     "lint": "eslint . --max-warnings=0"
   },
   "dependencies": {
-    "@bnb/shared": "workspace:*",
+    "@bnb/shared": "*",
     "@fortawesome/fontawesome-svg-core": "^6.6.0",
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/vue-fontawesome": "^3.0.8",
     "@primevue/themes": "^4.2.3",
     "axios": "^1.7.7",
     "pinia": "^2.2.6",
+    "@fontsource/inter": "^5.2.5",
     "primevue": "^4.2.3",
     "vue": "^3.5.13",
     "vue-draggable-plus": "^0.6.0",
@@ -33,8 +34,5 @@
     "vite": "^5.4.10",
     "vitest": "^2.1.4",
     "vue-tsc": "^2.1.10"
-  },
-  "optionalDependencies": {
-    "@rollup/rollup-darwin-x64": "^4.68.0"
   }
 }

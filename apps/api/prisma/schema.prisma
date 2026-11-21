@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Engines para la máquina de build y para el servidor Windows offline
+  binaryTargets = ["native", "windows"]
 }
 
 datasource db {
