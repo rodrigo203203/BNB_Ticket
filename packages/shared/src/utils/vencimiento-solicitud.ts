@@ -15,8 +15,9 @@ export type SolicitudParaVencimiento = {
 };
 
 /**
- * Vencida: entregada después de la fecha requerida, o sin entregar con fecha requerida ya pasada.
- * Comparación por día calendario America/La_Paz.
+ * Vencida (dashboard T8 / análisis operativo): entregada después de la fecha requerida,
+ * o sin entregar con fecha requerida ya pasada.
+ * La vista **Carga del equipo** (T9b) usa `esVencidaVistaCarga` (solo sin entrega).
  */
 export function esSolicitudVencida(
   s: SolicitudParaVencimiento,

@@ -27,6 +27,7 @@ Plataforma corporativa del BNB para registrar, asignar y dar trazabilidad a soli
   - `feat/formulario-solicitud` — formulario nueva solicitud, fecha requerida obligatoria, tarjeta de fechas en detalle.
   - `feat/adjuntos` — API y UI de adjuntos (PDF/XLSX/CSV/DOCX) en alta y detalle.
   - `feat/dashboard-analisis` — panel operativo con Chart.js, `/dashboard/analisis`, plazos compartidos.
+  - `feat/gantt` — ruta `/gantt`, API `GET /solicitudes/gantt`, barras discontinuas sin fecha de entrega.
   - `feat/dashboard-analisis` — panel operativo con Chart.js, `/dashboard/analisis`, plazos compartidos.
 
 ## Estructura

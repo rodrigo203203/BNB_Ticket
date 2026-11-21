@@ -1,4 +1,5 @@
 import { Role, RequestStatus, RequestPriority, RequestCategory, AuditAction } from '../enums/index.js';
+import type { NivelCarga } from '../utils/carga-equipo.js';
 
 export interface UserSummary {
   id: string;
@@ -92,6 +93,49 @@ export interface DashboardAnalisisResumen {
   completadasMes: number;
   rechazadas: number;
   canceladas: number;
+}
+
+export interface EncargadoConCarga {
+  id: string;
+  fullName: string;
+  email: string;
+  role: Role;
+  area: string;
+  puntosCarga: number;
+  nivel: NivelCarga;
+  activas: number;
+  vencidas: number;
+}
+
+export interface EquipoCargaPersonaRow extends EncargadoConCarga {
+  porEstado: Record<string, number>;
+  porVencer: number;
+  proximaFechaEntrega: string | null;
+  proximaSolicitudCodigo: string | null;
+}
+
+export interface EquipoCargaResponse {
+  resumen: {
+    personas: number;
+    activasTotales: number;
+    vencidasTotales: number;
+    porVencerTotales: number;
+  };
+  personas: EquipoCargaPersonaRow[];
+}
+
+export interface SolicitudGanttItem {
+  id: string;
+  code: string;
+  title: string;
+  status: RequestStatus;
+  priority: RequestPriority;
+  assignedAnalystName: string | null;
+  fechaRequerida: string | null;
+  fechaEntrega: string | null;
+  createdAt: string;
+  /** Sin fecha de entrega comprometida: la barra se dibuja con trazo discontinuo. */
+  sinFechaEntrega: boolean;
 }
 
 export interface DashboardAnalisisStats {

@@ -14,6 +14,7 @@ import {
   esFechaRequeridaPosteriorAHoy,
   AuditAction,
   SolicitudItem,
+  SolicitudGanttItem,
   UserSummary,
 } from '@bnb/shared';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
@@ -22,10 +23,14 @@ import { QuerySolicitudesDto } from './dto/query-solicitudes.dto';
 import { AssignAnalystDto } from './dto/assign-analyst.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { UpdateFechaEntregaDto } from './dto/update-fecha-entrega.dto';
+import { EquipoCargaService } from '../equipo/equipo-carga.service';
 
 @Injectable()
 export class SolicitudesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly equipoCargaService: EquipoCargaService,
+  ) {}
 
   async create(dto: CreateSolicitudDto, user: UserSummary): Promise<SolicitudItem> {
     // Defensa adicional: la fecha requerida es obligatoria y debe ser futura (America/La_Paz)
@@ -273,6 +278,13 @@ export class SolicitudesService {
       throw new BadRequestException('El usuario seleccionado se encuentra inactivo en la plataforma.');
     }
 
+    const cargaDestino = await this.equipoCargaService.calcularCargaUsuarioId(analyst.id);
+    if (cargaDestino.nivel === 'alta' && !dto.comment?.trim()) {
+      throw new BadRequestException(
+        'Debe indicar un motivo (instrucción / nota) al asignar a una persona con carga ALTA',
+      );
+    }
+
     const currentStatus = solicitud.status as RequestStatus;
     // Si estaba registrada, pasa automáticamente a EN_ANALISIS al ser asignada
     const newStatus = currentStatus === RequestStatus.REGISTRADA ? RequestStatus.EN_ANALISIS : currentStatus;
@@ -285,9 +297,14 @@ export class SolicitudesService {
       },
     });
 
+    const motivoAlta =
+      cargaDestino.nivel === 'alta'
+        ? ` [Carga ALTA: ${cargaDestino.puntosCarga} pts al momento de asignar]`
+        : '';
+
     const comment = dto.comment?.trim()
-      ? `Asignado a ${analyst.fullName} (${analyst.role}). Nota: ${dto.comment}`
-      : `Asignado formalmente a ${analyst.fullName} (${analyst.role}) por ${user.fullName} (${user.role}).`;
+      ? `Asignado a ${analyst.fullName} (${analyst.role}). Nota: ${dto.comment}${motivoAlta}`
+      : `Asignado formalmente a ${analyst.fullName} (${analyst.role}) por ${user.fullName} (${user.role}).${motivoAlta}`;
 
     await this.prisma.solicitudHistory.create({
       data: {
@@ -304,7 +321,7 @@ export class SolicitudesService {
         userId: user.id,
         userEmail: user.email,
         action: AuditAction.REQUEST_STATUS_UPDATED,
-        details: `Asignación de encargado en ${solicitud.code}: asignado a ${analyst.fullName} (${analyst.email}).`,
+        details: `Asignación de encargado en ${solicitud.code}: asignado a ${analyst.fullName} (${analyst.email}).${dto.comment?.trim() ? ` Motivo: ${dto.comment.trim()}` : ''}${motivoAlta}`,
       },
     }).catch(() => {});
 
@@ -370,6 +387,42 @@ export class SolicitudesService {
     });
 
     return this.findOne(id, user);
+  }
+
+  /** Datos para diagrama Gantt (boceto 03); solicitante sin acceso. */
+  async findForGantt(user: UserSummary): Promise<SolicitudGanttItem[]> {
+    if (user.role === Role.SOLICITANTE) {
+      throw new ForbiddenException('El diagrama Gantt no está disponible para solicitantes');
+    }
+
+    const where: { assignedAnalystId?: string } = {};
+    if (user.role === Role.ANALISTA) {
+      where.assignedAnalystId = user.id;
+    }
+
+    const rows = await this.prisma.solicitud.findMany({
+      where: {
+        ...where,
+        status: {
+          notIn: [RequestStatus.CANCELADA],
+        },
+      },
+      include: { assignedAnalyst: true },
+      orderBy: [{ fechaRequerida: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      code: r.code,
+      title: r.title,
+      status: r.status as RequestStatus,
+      priority: r.priority as RequestPriority,
+      assignedAnalystName: r.assignedAnalyst?.fullName ?? null,
+      fechaRequerida: r.fechaRequerida ? r.fechaRequerida.toISOString() : null,
+      fechaEntrega: r.fechaEntrega ? r.fechaEntrega.toISOString() : null,
+      createdAt: r.createdAt.toISOString(),
+      sinFechaEntrega: !r.fechaEntrega,
+    }));
   }
 
   private mapToItem(raw: any): SolicitudItem {

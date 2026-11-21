@@ -18,6 +18,10 @@ const navItems = computed(() => {
     { label: 'Tablero Kanban', path: '/kanban', icon: 'table-columns' },
   ];
 
+  if (authStore.user && authStore.user.role !== Role.SOLICITANTE) {
+    items.splice(4, 0, { label: 'Gantt', path: '/gantt', icon: 'layer-group' });
+  }
+
   if (authStore.user?.role === Role.ADMINISTRADOR) {
     items.push({ label: 'Gestión Usuarios', path: '/admin/users', icon: 'users' });
   }
