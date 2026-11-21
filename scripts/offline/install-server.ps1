@@ -67,9 +67,21 @@ if ((Test-Path $envExample) -and (-not (Test-Path $envFile))) {
 
 $pgScripts = Join-Path $InstallDir "scripts\postgres"
 $pgStart = Join-Path $pgScripts "start.ps1"
+$configModule = Join-Path $pgScripts "Postgres-Config.ps1"
+$pgMode = 'portable'
+if (Test-Path $configModule) {
+    . $configModule
+    $pgMode = Get-BnbPostgresModeFromInstallDir -InstallDir $InstallDir
+}
+
 if (Test-Path $pgStart) {
-    Write-Host "→ Iniciando PostgreSQL portable..." -ForegroundColor Yellow
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $pgStart
+    if ($pgMode -eq 'service') {
+        Write-Host "→ Modo PostgreSQL: service (no se usa pg_ctl desde install-server)." -ForegroundColor Yellow
+        Write-Host "  Ejecute scripts\postgres\start.ps1 si el servicio no está en ejecución." -ForegroundColor Yellow
+    } else {
+        Write-Host "→ Iniciando PostgreSQL portable (pg_ctl)..." -ForegroundColor Yellow
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $pgStart
+    }
 } else {
     Write-Warning "No se encontró $pgStart. Configure postgres.local.config.json y ejecute start.ps1 manualmente."
 }
@@ -78,7 +90,7 @@ Write-Host @"
 
 Próximos pasos (sin red):
   1. Editar $envFile (DATABASE_URL con BNB_DB_USER/BNB_DB_PASSWORD, JWT, CORS, etc.)
-  2. Si es instalación nueva: scripts\postgres\initdb.ps1 y create-db.ps1 (ver docs/postgres-portable.md)
+  2. Si es instalación nueva portable: initdb.ps1 y create-db.ps1 (modo service: solo create-db.ps1). Ver docs/postgres.md
   3. npm run prisma:migrate:deploy y npm run seed:admin (desde la raíz del paquete)
   4. Arrancar API:
        cd $InstallDir\apps\api

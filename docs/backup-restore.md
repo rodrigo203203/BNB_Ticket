@@ -26,7 +26,7 @@ $env:POSTGRES_SUPERUSER_PASSWORD = "<desde gestor de secretos>"
 .\backup.ps1
 ```
 
-El respaldo custom (`.dump`) se guarda en `backupDir` del archivo `postgres.local.config.json` (ver [postgres-portable.md](./postgres-portable.md)).
+El respaldo custom (`.dump`) se guarda en `backupDir` del archivo `postgres.local.config.json` (ver [postgres.md](./postgres.md); modos portable y service).
 
 ### Respaldo manual con `pg_dump` (misma carpeta `pgBin`):
 

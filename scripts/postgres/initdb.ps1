@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Inicializa un clúster PostgreSQL portable con autenticación scram-sha-256.
+    Inicializa clúster portable. No aplica en modo service (avisa y sale).
 #>
 param([string]$ConfigPath)
 
@@ -8,6 +8,8 @@ $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\Postgres-Config.ps1"
 
 $cfg = Get-BnbPostgresConfig -ConfigPath $ConfigPath
+Assert-BnbPostgresPortableMode -Cfg $cfg
+
 $initdb = Get-PgExecutable -PgBin $cfg.pgBin -Name "initdb"
 
 if (Test-Path $cfg.pgData) {
@@ -22,7 +24,6 @@ if (Test-Path $cfg.pgData) {
 $superPass = Get-SuperuserPassword
 $pwFile = New-TemporaryFile
 try {
-    # initdb --pwfile no acepta línea vacía; escribimos contraseña en archivo temporal
     Set-Content -Path $pwFile.FullName -Value $superPass -NoNewline -Encoding ASCII
 
     Write-Host "→ initdb en $($cfg.pgData) (auth scram-sha-256)..." -ForegroundColor Yellow
@@ -41,6 +42,5 @@ try {
 }
 finally {
     Remove-Item $pwFile.FullName -Force -ErrorAction SilentlyContinue
-    # No dejar la contraseña en variables más de lo necesario
     $superPass = $null
 }

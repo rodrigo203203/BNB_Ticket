@@ -23,6 +23,7 @@ Plataforma corporativa del BNB para registrar, asignar y dar trazabilidad a soli
   - `chore/contexto` — CONTEXTO, `.cursorrules`, higiene de credenciales en docs.
   - `chore/npm-offline` — npm workspaces, empaquetado offline, Inter local.
   - `chore/postgres-portable` — PostgreSQL zip + scripts PowerShell.
+  - `chore/postgres-dual` — PostgreSQL portable **o** servicio Windows (`mode` en config / `PG_MODE`).
   - `feat/schema-migraciones` … `feat/usuarios-csv` — modelo, admin, CSV (apiladas).
   - `feat/formulario-solicitud` — formulario nueva solicitud, fecha requerida obligatoria, tarjeta de fechas en detalle.
   - `feat/adjuntos` — API y UI de adjuntos (PDF/XLSX/CSV/DOCX) en alta y detalle.
@@ -75,6 +76,7 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-21 | **T8 análisis:** `GET /dashboard/analisis` (analista asignadas; coord/admin global; solicitante 403). Vencidas dashboard incluyen entregas tardías (`esSolicitudVencida`). |
 | 2026-11-21 | **T9 Gantt:** `/gantt` + `GET /solicitudes/gantt`; barras punteadas sin `fechaEntrega`. |
 | 2026-11-21 | **T9b carga equipo:** `/equipo/carga` + `GET /equipo/carga`; puntos prioridad (1–4), umbrales 10/20/21; vencida vista solo sin entrega; reasignación con motivo si carga ALTA. |
+| 2026-11-21 | **Postgres dual:** `mode` portable \| service en `postgres.local.config.json` o `PG_MODE`; `initdb` solo portable; `install-server` respeta el modo. |
 
 ## Estado
 
@@ -84,7 +86,7 @@ rules/             Reglas de exclusión de contexto para agentes
 | BD | Prisma Migrate — migración inicial + campos solicitud/adjuntos/`must_change_password` |
 | Despliegue | Documentado para Windows + IIS; credenciales en docs corregidas en `chore/contexto` |
 | Offline / npm | En PR — scripts `scripts/offline/*.ps1`, docs/instalacion-offline.md, Inter vía @fontsource |
-| Postgres portable | Scripts init/start/create-db/backup en `chore/postgres-portable` |
+| Postgres | Modo **portable** (zip) o **service** (instalador); ver [docs/postgres.md](./docs/postgres.md) |
 | Seed producción | `seed:admin` idempotente; `seed:demo` solo desarrollo |
 
 ## Pendientes y bloqueos
@@ -110,7 +112,7 @@ rules/             Reglas de exclusión de contexto para agentes
 - [docs/arquitectura.md](./docs/arquitectura.md)
 - [docs/deployment-windows.md](./docs/deployment-windows.md)
 - [docs/instalacion-offline.md](./docs/instalacion-offline.md)
-- [docs/postgres-portable.md](./docs/postgres-portable.md)
+- [docs/postgres.md](./docs/postgres.md)
 - [docs/backup-restore.md](./docs/backup-restore.md)
 - [rules/ignore-rules.md](./rules/ignore-rules.md) — detalle de exclusiones para agentes
 - Plan de análisis (referencia interna): `uploads/bnb_ticket_plan.md`

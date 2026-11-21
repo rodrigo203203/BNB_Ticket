@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Muestra el estado del servidor con pg_ctl status.
+    Estado de PostgreSQL (pg_ctl status o servicio Windows).
 #>
 param([string]$ConfigPath)
 
@@ -8,7 +8,5 @@ $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\Postgres-Config.ps1"
 
 $cfg = Get-BnbPostgresConfig -ConfigPath $ConfigPath
-$pgCtl = Get-PgExecutable -PgBin $cfg.pgBin -Name "pg_ctl"
-
-& $pgCtl status -D $cfg.pgData
-exit $LASTEXITCODE
+$code = Show-BnbPostgresStatus -Cfg $cfg
+exit $code
