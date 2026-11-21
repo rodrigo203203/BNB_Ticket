@@ -7,9 +7,17 @@ import {
   Body,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Res,
+  Delete,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SolicitudesService } from './solicitudes.service';
+import { SolicitudesAdjuntosService } from './solicitudes-adjuntos.service';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { UpdateSolicitudStatusDto } from './dto/update-status.dto';
 import { QuerySolicitudesDto } from './dto/query-solicitudes.dto';
@@ -27,7 +35,10 @@ import { Role, UserSummary } from '@bnb/shared';
 @Controller('solicitudes')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SolicitudesController {
-  constructor(private readonly solicitudesService: SolicitudesService) {}
+  constructor(
+    private readonly solicitudesService: SolicitudesService,
+    private readonly adjuntosService: SolicitudesAdjuntosService,
+  ) {}
 
   @Post()
   @Roles(Role.SOLICITANTE, Role.ADMINISTRADOR, Role.COORDINADOR, Role.ANALISTA)
@@ -87,6 +98,47 @@ export class SolicitudesController {
     @CurrentUser() user: UserSummary,
   ) {
     return this.solicitudesService.updateFechaEntrega(id, dto, user);
+  }
+
+  @Get(':id/adjuntos')
+  @ApiOperation({ summary: 'Lista adjuntos de la solicitud' })
+  async listarAdjuntos(@Param('id') id: string, @CurrentUser() user: UserSummary) {
+    return this.adjuntosService.listar(id, user);
+  }
+
+  @Post(':id/adjuntos')
+  @UseInterceptors(
+    FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  @ApiOperation({ summary: 'Sube un adjunto (solo solicitante creador)' })
+  async subirAdjunto(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: UserSummary,
+  ) {
+    return this.adjuntosService.subir(id, file, user);
+  }
+
+  @Get(':id/adjuntos/:adjuntoId/descarga')
+  async descargarAdjunto(
+    @Param('adjuntoId') adjuntoId: string,
+    @CurrentUser() user: UserSummary,
+    @Res() res: Response,
+  ) {
+    const { adj, buffer } = await this.adjuntosService.resolverDescarga(adjuntoId, user);
+    res.setHeader('Content-Type', adj.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${adj.originalName}"`);
+    res.send(buffer);
+  }
+
+  @Delete(':id/adjuntos/:adjuntoId')
+  @ApiOperation({ summary: 'Elimina adjunto (solicitante, estado REGISTRADA)' })
+  async eliminarAdjunto(
+    @Param('adjuntoId') adjuntoId: string,
+    @CurrentUser() user: UserSummary,
+  ) {
+    await this.adjuntosService.eliminar(adjuntoId, user);
+    return { message: 'Adjunto eliminado' };
   }
 
   @Post(':id/comments')

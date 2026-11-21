@@ -12,6 +12,9 @@ import {
   CATEGORY_LABELS,
   fechaCalendarioToIso,
   esFechaRequeridaPosteriorAHoy,
+  ADJUNTO_EXTENSIONES_PERMITIDAS,
+  ADJUNTO_MAX_BYTES,
+  ADJUNTO_MAX_POR_SOLICITUD,
 } from '@bnb/shared';
 
 const router = useRouter();
@@ -25,6 +28,41 @@ const fechaRequerida = ref<Date | null>(null);
 const camposRequeridos = ref('');
 const submitting = ref(false);
 const errorMessage = ref('');
+const archivosPendientes = ref<File[]>([]);
+const fileInputNueva = ref<HTMLInputElement | null>(null);
+
+const acceptAdjuntos = ADJUNTO_EXTENSIONES_PERMITIDAS.map((e) => `.${e}`).join(',');
+
+function onSeleccionArchivos(ev: Event) {
+  const input = ev.target as HTMLInputElement;
+  const nuevos = input.files ? Array.from(input.files) : [];
+  input.value = '';
+  for (const f of nuevos) {
+    if (archivosPendientes.value.length >= ADJUNTO_MAX_POR_SOLICITUD) break;
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    if (!ADJUNTO_EXTENSIONES_PERMITIDAS.includes(ext as (typeof ADJUNTO_EXTENSIONES_PERMITIDAS)[number])) {
+      errorMessage.value = 'Formato no permitido. Use PDF, XLSX, CSV o DOCX.';
+      continue;
+    }
+    if (f.size > ADJUNTO_MAX_BYTES) {
+      errorMessage.value = 'Cada adjunto no puede superar 10 MB.';
+      continue;
+    }
+    archivosPendientes.value.push(f);
+  }
+}
+
+function quitarPendiente(index: number) {
+  archivosPendientes.value.splice(index, 1);
+}
+
+async function subirAdjuntosTrasCrear(solicitudId: string) {
+  for (const file of archivosPendientes.value) {
+    const form = new FormData();
+    form.append('file', file);
+    await apiClient.post(`/solicitudes/${solicitudId}/adjuntos`, form);
+  }
+}
 
 const categories = [
   { value: RequestCategory.EXTRACCION_DATOS, label: CATEGORY_LABELS[RequestCategory.EXTRACCION_DATOS] },
@@ -92,6 +130,18 @@ async function handleSubmit() {
     });
 
     const newId = res.data?.id || res.id;
+    if (newId && archivosPendientes.value.length) {
+      try {
+        await subirAdjuntosTrasCrear(newId);
+      } catch (uploadErr: any) {
+        errorMessage.value =
+          uploadErr.response?.data?.message ||
+          uploadErr.message ||
+          'La solicitud se creó, pero falló la carga de adjuntos.';
+        router.push(`/solicitudes/${newId}`);
+        return;
+      }
+    }
     if (newId) {
       router.push(`/solicitudes/${newId}`);
     } else {
@@ -122,8 +172,8 @@ async function handleSubmit() {
         <div>
           <h1 class="header-title">Registrar Nueva Solicitud</h1>
           <p class="header-subtitle">
-            Complete el formulario con el plazo requerido, los campos de data y el alcance técnico. Los adjuntos se
-            cargarán en el siguiente paso del flujo (T7).
+            Complete el formulario con el plazo requerido, los campos de data y el alcance técnico. Los archivos
+            seleccionados se suben automáticamente al crear la solicitud.
           </p>
         </div>
       </div>
@@ -250,20 +300,40 @@ async function handleSubmit() {
           </div>
         </section>
 
-        <!-- Placeholder adjuntos (T7) -->
-        <section class="form-card adjuntos-placeholder">
+        <section class="form-card">
           <h2 class="section-title">
             <span class="section-accent section-accent-muted" />
-            Archivos adjuntos
+            Archivos adjuntos (opcional)
           </h2>
-          <div class="adjuntos-box">
-            <font-awesome-icon icon="image" class="adjuntos-icon" />
-            <p class="adjuntos-text">
-              La carga de archivos (especificaciones, plantillas, muestras) estará disponible en el <strong>siguiente
-                paso</strong> del registro (tarea T7 — adjuntos).
-            </p>
-            <Button type="button" label="Subir archivos (próximamente)" disabled severity="secondary" />
-          </div>
+          <p class="help-text adjuntos-intro">
+            Especificaciones, plantillas o muestras. Se cargan al enviar la solicitud (máx.
+            {{ ADJUNTO_MAX_POR_SOLICITUD }} archivos).
+          </p>
+          <input
+            ref="fileInputNueva"
+            type="file"
+            class="hidden-file-input"
+            :accept="acceptAdjuntos"
+            multiple
+            @change="onSeleccionArchivos"
+          />
+          <Button
+            type="button"
+            label="Seleccionar archivos"
+            icon="pi pi-upload"
+            severity="secondary"
+            :disabled="archivosPendientes.length >= ADJUNTO_MAX_POR_SOLICITUD"
+            @click="fileInputNueva?.click()"
+          />
+          <ul v-if="archivosPendientes.length" class="pendientes-list">
+            <li v-for="(f, idx) in archivosPendientes" :key="`${f.name}-${idx}`" class="pendiente-item">
+              <font-awesome-icon icon="folder" />
+              <span>{{ f.name }}</span>
+              <button type="button" class="btn-quitar" title="Quitar" @click="quitarPendiente(idx)">
+                <font-awesome-icon icon="xmark" />
+              </button>
+            </li>
+          </ul>
         </section>
 
         <div class="form-actions">
@@ -470,6 +540,47 @@ async function handleSubmit() {
   font-size: 0.85rem;
   color: var(--bnb-purple);
   font-weight: 600;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.adjuntos-intro {
+  margin-bottom: 1rem;
+}
+
+.pendientes-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pendiente-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.btn-quitar {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.btn-quitar:hover {
+  color: #ef4444;
 }
 
 .adjuntos-placeholder {

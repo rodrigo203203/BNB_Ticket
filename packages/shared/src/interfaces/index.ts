@@ -41,6 +41,16 @@ export interface SolicitudAuditEntry {
   createdAt: string;
 }
 
+export interface SolicitudAdjuntoItem {
+  id: string;
+  solicitudId: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedById: string;
+  createdAt: string;
+}
+
 export interface SolicitudItem {
   id: string;
   code: string;
@@ -63,6 +73,7 @@ export interface SolicitudItem {
   updatedAt: string;
   closedAt: string | null;
   history?: SolicitudAuditEntry[];
+  adjuntos?: SolicitudAdjuntoItem[];
 }
 
 export interface DashboardStatsSolicitante {

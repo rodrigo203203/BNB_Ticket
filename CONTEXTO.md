@@ -25,6 +25,7 @@ Plataforma corporativa del BNB para registrar, asignar y dar trazabilidad a soli
   - `chore/postgres-portable` — PostgreSQL zip + scripts PowerShell.
   - `feat/schema-migraciones` … `feat/usuarios-csv` — modelo, admin, CSV (apiladas).
   - `feat/formulario-solicitud` — formulario nueva solicitud, fecha requerida obligatoria, tarjeta de fechas en detalle.
+  - `feat/adjuntos` — API y UI de adjuntos (PDF/XLSX/CSV/DOCX) en alta y detalle.
 
 ## Estructura
 
@@ -65,12 +66,13 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-20 | Agentes Cursor: modelo Composer. |
 | 2026-11-21 | **fecha requerida** obligatoria al crear solicitud; debe ser día calendario **estrictamente posterior a hoy** en zona `America/La_Paz` (no fin de día UTC). Utilidad compartida `esFechaRequeridaPosteriorAHoy` en `@bnb/shared`. |
 | 2026-11-21 | UI T6: `NuevaSolicitudView` con PrimeVue DatePicker, campos requeridos y placeholder adjuntos (T7). Detalle: tarjeta “Fechas del requerimiento” y PATCH fecha entrega según RBAC. Ruta `/solicitudes/nueva` para cualquier rol autenticado. |
+| 2026-11-21 | **T7 adjuntos:** subida post-creación en nueva solicitud; panel en detalle (listar/descargar/eliminar en REGISTRADA). Almacenamiento en `storage/uploads/solicitudes/{id}/`. |
 
 ## Estado
 
 | Área | Situación |
 |------|-----------|
-| Funcionalidad core | Login, solicitudes (formulario con fecha/campos), Kanban, dashboard básico, admin usuarios, RBAC |
+| Funcionalidad core | Login, solicitudes (formulario, adjuntos, fechas), Kanban, dashboard básico, admin usuarios, RBAC |
 | BD | Prisma Migrate — migración inicial + campos solicitud/adjuntos/`must_change_password` |
 | Despliegue | Documentado para Windows + IIS; credenciales en docs corregidas en `chore/contexto` |
 | Offline / npm | En PR — scripts `scripts/offline/*.ps1`, docs/instalacion-offline.md, Inter vía @fontsource |
@@ -85,8 +87,8 @@ rules/             Reglas de exclusión de contexto para agentes
 2. Prisma Migrate + campos solicitud/adjuntos (T3).
 3. `seed:admin` idempotente (variables `ADMIN_EMAIL`, `ADMIN_PASSWORD`); separar `seed:demo`.
 4. ~~Alta masiva CSV~~ (rama T5).
-5. ~~Campos nuevos en solicitud~~ (parcial T6): *fecha requerida* y *campos* en alta; *fecha de entrega* en detalle; **adjuntos** pendiente T7.
-6. Dashboard ampliado, Gantt, mejoras de UI.
+5. ~~Campos nuevos en solicitud~~ (T6–T7): fechas, campos y adjuntos.
+6. Dashboard ampliado (T8), Gantt (T9), carga de equipo (T9b), pulido UI (T10).
 
 **Pendiente explícito (no tocar en T0):**
 
