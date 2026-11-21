@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import DatePicker from 'primevue/datepicker';
 import Button from 'primevue/button';
 import AppLayout from '../layouts/AppLayout.vue';
+import SolicitudAdjuntosPanel from '../components/SolicitudAdjuntosPanel.vue';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../stores/auth.store';
 import {
@@ -374,6 +375,19 @@ onMounted(() => {
             <div v-if="solicitud.camposRequeridos" class="content-box campos-box">
               <h3 class="box-title">Campos o variables solicitadas</h3>
               <p class="description-text">{{ solicitud.camposRequeridos }}</p>
+            </div>
+
+            <div class="content-box">
+              <h3 class="box-title">
+                <font-awesome-icon icon="folder" />
+                <span>Archivos adjuntos</span>
+              </h3>
+              <SolicitudAdjuntosPanel
+                :solicitud-id="solicitud.id"
+                :requester-id="solicitud.requesterId"
+                :status="solicitud.status"
+                :initial-adjuntos="solicitud.adjuntos"
+              />
             </div>
 
             <!-- Justificación si existe -->

@@ -144,6 +144,7 @@ export class SolicitudesService {
           include: { author: true },
           orderBy: { createdAt: 'asc' },
         },
+        adjuntos: true,
       },
     });
 
@@ -402,6 +403,15 @@ export class SolicitudesService {
         newStatus: h.newStatus,
         comment: h.comment,
         createdAt: h.createdAt.toISOString(),
+      })),
+      adjuntos: raw.adjuntos?.map((a: any) => ({
+        id: a.id,
+        solicitudId: a.solicitudId,
+        originalName: a.originalName,
+        mimeType: a.mimeType,
+        sizeBytes: a.sizeBytes,
+        uploadedById: a.uploadedById,
+        createdAt: a.createdAt.toISOString(),
       })),
     };
   }
