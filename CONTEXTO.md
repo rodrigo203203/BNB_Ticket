@@ -77,6 +77,8 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-21 | `validateEnvironment` conserva claves **MAYÚSCULAS** y camelCase (`config.get('JWT_ACCESS_SECRET')` y `jwtAccessSecret`). |
 | 2026-11-21 | Offline Git Bash: `build-package.sh`, `install-server.sh`, `scripts/postgres/*.sh`; Prisma sin proxy; `admin:reset` para lockout. |
 | 2026-11-21 | Kanban: `overflow-x: auto` en tablero (columnas con `min-width` en desktop). |
+| 2026-11-21 | Jest integración: snapshot tras `cargar-entorno`; `npm run test:integration`; `seed:demo` sin imprimir claves por defecto. |
+| 2026-11-21 | Vite dev/preview `host: 127.0.0.1`; paquete offline exige binarios win32 (verificador bash). |
 | 2026-11-20 | Agentes Cursor: modelo Composer. |
 | 2026-11-21 | **fecha requerida** obligatoria al crear solicitud; debe ser día calendario **estrictamente posterior a hoy** en zona `America/La_Paz` (no fin de día UTC). Utilidad compartida `esFechaRequeridaPosteriorAHoy` en `@bnb/shared`. |
 | 2026-11-21 | UI T6: `NuevaSolicitudView` con PrimeVue DatePicker, campos requeridos y placeholder adjuntos (T7). Detalle: tarjeta “Fechas del requerimiento” y PATCH fecha entrega según RBAC. Ruta `/solicitudes/nueva` para cualquier rol autenticado. |

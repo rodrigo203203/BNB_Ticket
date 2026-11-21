@@ -6,6 +6,13 @@ import { randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();
 
+function debeMostrarContrasenasEnConsola(): boolean {
+  return (
+    process.argv.includes('--mostrar-contrasenas') ||
+    process.env.SEED_MOSTRAR_CONTRASENAS === '1'
+  );
+}
+
 function generarClaveSegura(): string {
   // 16 bytes → base64url (~22 caracteres) + sufijo para cumplir política mínima
   return `Bnb!${randomBytes(12).toString('base64url')}`;
@@ -48,9 +55,13 @@ async function main() {
   });
 
   console.log(`✅ Administrador creado: ${email}`);
-  if (mostrarUnaVez) {
+  if (mostrarUnaVez && debeMostrarContrasenasEnConsola()) {
     console.log('⚠️  Contraseña inicial (mostrar solo esta vez, no se guarda en texto plano):');
     console.log(password);
+  } else if (mostrarUnaVez) {
+    console.log(
+      'Contraseña generada automáticamente (no se muestra). Defina ADMIN_PASSWORD en .env o use SEED_MOSTRAR_CONTRASENAS=1.',
+    );
   } else {
     console.log('Contraseña tomada de ADMIN_PASSWORD (no se muestra en consola).');
   }

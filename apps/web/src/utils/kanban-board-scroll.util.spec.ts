@@ -45,7 +45,7 @@ describe('deltaAutoscrollKanban', () => {
 
 describe('mascaraKanbanCss', () => {
   it('combina máscaras cuando hay scroll en ambos lados', () => {
-    expect(mascaraKanbanCss(true, true)).toContain('24px');
+    expect(mascaraKanbanCss(true, true)).toContain('40px');
     expect(mascaraKanbanCss(false, false)).toBeNull();
   });
 });

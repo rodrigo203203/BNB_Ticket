@@ -14,6 +14,14 @@ import { hashPassword } from '../src/common/utils/argon2.util';
 
 const prisma = new PrismaClient();
 
+/** Por defecto no imprimir contraseñas (repos públicos / logs). */
+function debeMostrarContrasenasEnConsola(): boolean {
+  return (
+    process.argv.includes('--mostrar-contrasenas') ||
+    process.env.SEED_MOSTRAR_CONTRASENAS === '1'
+  );
+}
+
 function generarClaveDemo(): string {
   return process.env.DEMO_SEED_PASSWORD || `Demo!${randomBytes(10).toString('base64url')}`;
 }
@@ -161,9 +169,15 @@ async function main() {
     },
   });
 
-  console.log(`✅ 7 usuarios demo; contraseña común de demo: "${defaultPassword}"`);
-  if (mostrarClaveImportado) {
-    console.log(`🔑 Usuario ${importadoEmail} (mustChangePassword): "${claveImportado}" — solo esta ejecución`);
+  if (debeMostrarContrasenasEnConsola()) {
+    console.log(`✅ 7 usuarios demo; contraseña común de demo: "${defaultPassword}"`);
+    if (mostrarClaveImportado) {
+      console.log(`🔑 Usuario ${importadoEmail} (mustChangePassword): "${claveImportado}" — solo esta ejecución`);
+    }
+  } else {
+    console.log(
+      '✅ 7 usuarios demo creados. Use DEMO_SEED_PASSWORD en .env o --mostrar-contrasenas para ver claves en consola.',
+    );
   }
 
   const req1 = await prisma.solicitud.create({

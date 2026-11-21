@@ -158,9 +158,15 @@ npm run typecheck
 # Pruebas unitarias completas
 npm run test
 
+# Integración API + Postgres (migrate + seed:demo + suites *.integration)
+# Requiere DATABASE_URL y DEMO_SEED_PASSWORD en .env — véase docs/pruebas-integracion.md
+npm run test:integration
+
 # Compilación completa de producción (shared, api, web)
 npm run build
 ```
+
+Las contraseñas de `seed:demo` y `seed:admin` **no se imprimen** por defecto; use `SEED_MOSTRAR_CONTRASENAS=1` o `--mostrar-contrasenas` solo en entornos controlados.
 
 ---
 

@@ -77,6 +77,14 @@ done
 echo "→ Copiando node_modules (binarios @node-rs/argon2 + Prisma windows)..."
 cp -a "${REPO_ROOT}/node_modules" "${STAGING}/node_modules"
 
+# shellcheck source=verificar-binarios-win-paquete.sh
+source "${SCRIPT_DIR}/verificar-binarios-win-paquete.sh"
+echo "→ Verificando binarios win32-x64 en staging..."
+verificar_binarios_win_paquete "${STAGING}/node_modules" || {
+  echo "El paquete no se generará: faltan binarios Windows (construya en win32-x64)." >&2
+  exit 1
+}
+
 mkdir -p "$OUTPUT_DIR"
 ZIP_NAME="bnb-ticket-offline-${VERSION}-win32-x64.zip"
 ZIP_PATH="$(cd "$OUTPUT_DIR" && pwd)/${ZIP_NAME}"
@@ -108,5 +116,4 @@ fs.writeFileSync('${MANIFEST}', JSON.stringify({
 echo ""
 echo "[OK] Paquete: $ZIP_PATH"
 echo "[OK] Manifiesto: $MANIFEST"
-echo "Verificar engines Windows:"
-find "${STAGING}/node_modules" -name '*query_engine-windows.dll.node' 2>/dev/null | head -n 3 || echo "(ejecute este script en Windows tras prisma generate para engines win32)"
+echo "[OK] Binarios Windows verificados (Prisma + Argon2 win32-x64)."

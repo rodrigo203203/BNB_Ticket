@@ -29,7 +29,8 @@
     "admin:reset": "npm run admin:reset --workspace=@bnb/api",
     "verify:env": "node scripts/verify-env.mjs",
     "secretos:generar": "node scripts/generar-secretos.mjs",
-    "test:generar-secretos": "node --test scripts/generar-secretos.spec.mjs"
+    "test:generar-secretos": "node --test scripts/generar-secretos.spec.mjs",
+    "test:integration": "npm run prisma:migrate:deploy && npm run seed:demo && RUN_DB_TESTS=1 npm test --workspace=@bnb/api -- --testPathPattern=integration"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.72.1",

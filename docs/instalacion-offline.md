@@ -15,7 +15,7 @@ Este flujo permite desplegar BNB_Ticket en un **servidor Windows 11 x64 sin acce
 
 ## Máquina con internet (build)
 
-1. Clonar el repositorio y usar la rama `chore/npm-offline` o `main` cuando se fusione.
+1. Clonar el repositorio (rama `fix/env-first` o `main` según su despliegue).
 2. Desde PowerShell en la raíz del repo:
    ```powershell
    .\scripts\offline\build-package.ps1
@@ -32,14 +32,14 @@ Este flujo permite desplegar BNB_Ticket en un **servidor Windows 11 x64 sin acce
 
 `npm run dev --workspaces` ejecuta scripts en serie. Para API + web en paralelo se usa **`concurrently`** en la raíz (dependencia de desarrollo ligera, sin impacto en el zip de producción si solo se copia lo compilado + `node_modules` de producción implícito en el empaquetado completo).
 
-### devDependencies en el paquete de producción
+### Contenido de `node_modules` en el ZIP
 
-El ZIP incluye `node_modules` completo tras `npm ci` en la máquina de build, porque:
+El ZIP incluye `node_modules` completo tras `npm ci` en la **máquina de build Windows x64**, porque:
 
-- `@node-rs/argon2` y `@prisma/client` requieren binarios nativos ya resueltos para Windows.
-- En el servidor **no** se ejecuta `npm install`.
+- `@node-rs/argon2` y `@prisma/client` requieren prebuilds **win32-x64** ya resueltos.
+- En el servidor **no** se ejecuta `npm install` ni `prisma generate`.
 
-Si en el futuro se reduce el tamaño del paquete, habrá que usar `npm ci --omit=dev` solo después de confirmar que el API no necesita ningún paquete de desarrollo en tiempo de ejecución (hoy `prisma` CLI no va al servidor si solo se usa `node dist/...`).
+En el servidor **sí** se usa el **CLI de Prisma ya empaquetado** dentro del ZIP, solo mediante los scripts npm incluidos (por ejemplo `npm run prisma:migrate:deploy` desde la raíz del paquete descomprimido). No hace falta instalar Prisma por separado ni tener red.
 
 ## Git Bash (Windows 11, sin PowerShell obligatorio)
 
@@ -144,7 +144,7 @@ El ZIP **no** incluye ningún `.env` real, solo `.env.example`.
 
 ## Verificación tras instalar
 
-- `GET http://localhost:3000/api/v1/health` (o la ruta configurada) responde OK.
+- `GET http://localhost:<PORT>/api/v1/health` responde OK (`PORT` del `.env` raíz; en desarrollo suele ser **3005** si el proxy Vite apunta ahí, o **3000** si no se ha cambiado).
 - La SPA carga sin errores en consola de red (no debe haber peticiones a Google Fonts ni otros CDNs).
 - Login con credenciales configuradas en la base de datos (no usar seed destructivo en producción).
 

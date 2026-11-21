@@ -1,3 +1,6 @@
+/** Ancho del degradado lateral (px) en máscara del tablero (Spark K3). */
+export const ANCHO_DEGRADADO_KANBAN_PX = 40;
+
 /** Estado del degradado lateral del tablero Kanban según scroll horizontal. */
 export type EstadoDegradadoKanban = {
   degradadoIzquierda: boolean;
@@ -40,14 +43,15 @@ export function deltaAutoscrollKanban(
 }
 
 export function mascaraKanbanCss(degradadoIzquierda: boolean, degradadoDerecha: boolean): string | null {
+  const edge = ANCHO_DEGRADADO_KANBAN_PX;
   if (degradadoIzquierda && degradadoDerecha) {
-    return 'linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%)';
+    return `linear-gradient(to right, transparent 0, #000 ${edge}px, #000 calc(100% - ${edge}px), transparent 100%)`;
   }
   if (degradadoDerecha) {
-    return 'linear-gradient(to right, #000 0, #000 calc(100% - 24px), transparent 100%)';
+    return `linear-gradient(to right, #000 0, #000 calc(100% - ${edge}px), transparent 100%)`;
   }
   if (degradadoIzquierda) {
-    return 'linear-gradient(to right, transparent 0, #000 24px, #000 100%)';
+    return `linear-gradient(to right, transparent 0, #000 ${edge}px, #000 100%)`;
   }
   return null;
 }

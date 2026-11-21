@@ -7,14 +7,14 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from '../src/app.module';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 
-import { hayBaseDeDatosParaTests } from './helpers/hay-base';
+import { contrasenaLoginIntegracion, hayBaseDeDatosParaTests } from './helpers/hay-base';
 
 const runIntegration = hayBaseDeDatosParaTests();
 
 (runIntegration ? describe : describe.skip)('GET /dashboard/analisis (HTTP)', () => {
   let app: INestApplication;
   let baseUrl: string;
-  const password = process.env.DEMO_SEED_PASSWORD || 'DemoBNB2026!';
+  const password = contrasenaLoginIntegracion() || 'DemoBNB2026!';
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();

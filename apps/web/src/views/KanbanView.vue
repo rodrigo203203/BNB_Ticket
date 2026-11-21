@@ -472,6 +472,27 @@ onUnmounted(() => {
   gap: 1rem;
 }
 
+/* 1024 px: misma fila título + acciones que en desktop (Spark R3). */
+@media (min-width: 769px) {
+  .kanban-header {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  .kanban-header > div:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .header-actions {
+    flex-shrink: 0;
+  }
+
+  .view-title {
+    font-size: clamp(1.15rem, 2.5vw, 1.5rem);
+  }
+}
+
 .title-row {
   display: flex;
   align-items: center;

@@ -10,7 +10,12 @@ import { AppModule } from '../src/app.module';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 import { validateEnvironment } from '../src/config/env.config';
 import { VALORES_DEV_POR_DEFECTO } from '../src/config/secretos-entorno.util';
-import { hayBaseDeDatosParaTests, urlBaseDeDatosInicial } from './helpers/hay-base';
+import {
+  contrasenaLoginIntegracion,
+  emailLoginIntegracion,
+  hayBaseDeDatosParaTests,
+  urlBaseDeDatosInicial,
+} from './helpers/hay-base';
 
 const CLAVES_SENSIBLES = [
   'JWT_ACCESS_SECRET',
@@ -23,6 +28,7 @@ const CLAVES_SENSIBLES = [
 
 const runWithDb = hayBaseDeDatosParaTests();
 const dbUrlInicial = urlBaseDeDatosInicial();
+const runLoginHttp = runWithDb && Boolean(contrasenaLoginIntegracion());
 
 function guardarYVaciarClaves(): Record<string, string | undefined> {
   const backup: Record<string, string | undefined> = {};
@@ -79,7 +85,7 @@ describe('ConfigService claves MAYÚSCULAS sin export previo', () => {
   });
 });
 
-(runWithDb ? describe : describe.skip)('POST /auth/login (supertest, solo .env)', () => {
+(runLoginHttp ? describe : describe.skip)('POST /auth/login (supertest, solo .env)', () => {
   let app: INestApplication;
   let backup: Record<string, string | undefined>;
 
@@ -113,13 +119,19 @@ describe('ConfigService claves MAYÚSCULAS sin export previo', () => {
     restaurarClaves(backup);
   });
 
-  it('login admin@bnb.com.bo responde 200 y cookie de sesión', async () => {
-    const password = process.env.DEMO_SEED_PASSWORD || 'DemoBNB2026!';
+  it('login admin responde 200 y cookie de sesión', async () => {
+    const password = contrasenaLoginIntegracion();
+    if (!password) {
+      throw new Error(
+        'Falta DEMO_SEED_PASSWORD o ADMIN_PASSWORD en .env (véase docs/pruebas-integracion.md y npm run test:integration).',
+      );
+    }
+    const email = emailLoginIntegracion();
     const res = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'admin@bnb.com.bo', password })
+      .send({ email, password })
       .expect(200);
-    expect(res.body?.data?.user?.email).toBe('admin@bnb.com.bo');
+    expect(res.body?.data?.user?.email).toBe(email);
     const cookies = res.headers['set-cookie'];
     expect(cookies?.length).toBeGreaterThan(0);
   });

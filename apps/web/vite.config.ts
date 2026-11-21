@@ -30,6 +30,8 @@ export default defineConfig(({ mode }) => {
     },
     envDir,
     server: {
+      /** Escucha en IPv4 explícito (evita solo [::1] en algunos entornos Windows). */
+      host: '127.0.0.1',
       port: 5173,
       proxy: {
         '/api': {
@@ -39,6 +41,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     preview: {
+      host: '127.0.0.1',
       port: 5173,
       proxy: {
         '/api': {
