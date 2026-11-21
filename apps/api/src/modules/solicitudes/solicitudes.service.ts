@@ -10,6 +10,7 @@ import {
   RequestStatus,
   RequestPriority,
   ALLOWED_STATUS_TRANSITIONS,
+  canEditFechaEntrega,
   AuditAction,
   SolicitudItem,
   UserSummary,
@@ -19,6 +20,7 @@ import { UpdateSolicitudStatusDto } from './dto/update-status.dto';
 import { QuerySolicitudesDto } from './dto/query-solicitudes.dto';
 import { AssignAnalystDto } from './dto/assign-analyst.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
+import { UpdateFechaEntregaDto } from './dto/update-fecha-entrega.dto';
 
 @Injectable()
 export class SolicitudesService {
@@ -40,6 +42,8 @@ export class SolicitudesService {
         requesterId: user.id,
         requesterArea: user.area,
         justification: dto.justification || null,
+        fechaRequerida: dto.fechaRequerida ? new Date(dto.fechaRequerida) : null,
+        camposRequeridos: dto.camposRequeridos?.trim() || null,
       },
       include: {
         requester: true,
@@ -325,6 +329,37 @@ export class SolicitudesService {
     return this.findOne(id, user);
   }
 
+  async updateFechaEntrega(
+    id: string,
+    dto: UpdateFechaEntregaDto,
+    user: UserSummary,
+  ): Promise<SolicitudItem> {
+    const solicitud = await this.prisma.solicitud.findUnique({
+      where: { id },
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException(`Solicitud con ID ${id} no encontrada`);
+    }
+
+    if (
+      !canEditFechaEntrega(user.role, user.id, {
+        assignedAnalystId: solicitud.assignedAnalystId,
+      })
+    ) {
+      throw new ForbiddenException('No tiene permisos para editar la fecha de entrega');
+    }
+
+    await this.prisma.solicitud.update({
+      where: { id },
+      data: {
+        fechaEntrega: new Date(dto.fechaEntrega),
+      },
+    });
+
+    return this.findOne(id, user);
+  }
+
   private mapToItem(raw: any): SolicitudItem {
     return {
       id: raw.id,
@@ -341,6 +376,9 @@ export class SolicitudesService {
       assignedAnalystId: raw.assignedAnalystId,
       assignedAnalystName: raw.assignedAnalyst?.fullName || null,
       estimatedHours: raw.estimatedHours,
+      fechaRequerida: raw.fechaRequerida ? raw.fechaRequerida.toISOString() : null,
+      fechaEntrega: raw.fechaEntrega ? raw.fechaEntrega.toISOString() : null,
+      camposRequeridos: raw.camposRequeridos ?? null,
       createdAt: raw.createdAt.toISOString(),
       updatedAt: raw.updatedAt.toISOString(),
       closedAt: raw.closedAt ? raw.closedAt.toISOString() : null,

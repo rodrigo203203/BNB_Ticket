@@ -10,6 +10,7 @@ export interface UserSummary {
   area: string;
   isActive: boolean;
   isLocked: boolean;
+  mustChangePassword?: boolean;
   failedAttempts: number;
   lastLoginAt: string | null;
   createdAt: string;
@@ -55,6 +56,9 @@ export interface SolicitudItem {
   assignedAnalystId: string | null;
   assignedAnalystName: string | null;
   estimatedHours: number | null;
+  fechaRequerida: string | null;
+  fechaEntrega: string | null;
+  camposRequeridos: string | null;
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;

@@ -15,6 +15,7 @@ import { UpdateSolicitudStatusDto } from './dto/update-status.dto';
 import { QuerySolicitudesDto } from './dto/query-solicitudes.dto';
 import { AssignAnalystDto } from './dto/assign-analyst.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
+import { UpdateFechaEntregaDto } from './dto/update-fecha-entrega.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -75,6 +76,17 @@ export class SolicitudesController {
     @CurrentUser() user: UserSummary,
   ) {
     return this.solicitudesService.assignAnalyst(id, dto, user);
+  }
+
+  @Patch(':id/fecha-entrega')
+  @Roles(Role.ANALISTA, Role.COORDINADOR, Role.ADMINISTRADOR)
+  @ApiOperation({ summary: 'Actualiza la fecha de entrega (analista asignado, coordinador o admin)' })
+  async updateFechaEntrega(
+    @Param('id') id: string,
+    @Body() dto: UpdateFechaEntregaDto,
+    @CurrentUser() user: UserSummary,
+  ) {
+    return this.solicitudesService.updateFechaEntrega(id, dto, user);
   }
 
   @Post(':id/comments')

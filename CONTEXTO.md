@@ -68,7 +68,7 @@ rules/             Reglas de exclusión de contexto para agentes
 | Área | Situación |
 |------|-----------|
 | Funcionalidad core | Login, solicitudes, Kanban, dashboard básico, admin usuarios, RBAC |
-| BD | `prisma db push` (sin migraciones versionadas aún) |
+| BD | Prisma Migrate — migración inicial + campos solicitud/adjuntos/`must_change_password` |
 | Despliegue | Documentado para Windows + IIS; credenciales en docs corregidas en `chore/contexto` |
 | Offline / npm | En PR — scripts `scripts/offline/*.ps1`, docs/instalacion-offline.md, Inter vía @fontsource |
 | Postgres portable | Scripts init/start/create-db/backup en `chore/postgres-portable` |

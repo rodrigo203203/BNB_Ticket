@@ -21,6 +21,8 @@
     "test:coverage": "npm run test:cov --workspace=@bnb/api",
     "prisma:validate": "npm run prisma:validate --workspace=@bnb/api",
     "prisma:generate": "npm run prisma:generate --workspace=@bnb/api",
+    "prisma:migrate:dev": "npm run prisma:migrate:dev --workspace=@bnb/api",
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy --workspace=@bnb/api",
     "seed": "npm run db:seed --workspace=@bnb/api",
     "verify:env": "node scripts/verify-env.mjs"
   },

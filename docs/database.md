@@ -137,8 +137,11 @@ npm run prisma:validate
 # Generar el cliente TypeScript de Prisma (@prisma/client)
 npm run prisma:generate
 
-# Sincronizar el esquema con PostgreSQL local
-npm exec --workspace=@bnb/api prisma db push
+# Aplicar migraciones (desarrollo)
+npm run prisma:migrate:dev
+
+# Producción / servidor offline
+npm run prisma:migrate:deploy
 
 # Poblar la base de datos con usuarios y tickets de prueba
 npm run seed

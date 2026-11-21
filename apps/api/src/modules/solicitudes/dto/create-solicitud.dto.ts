@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { RequestCategory, RequestPriority } from '@bnb/shared';
 
 export class CreateSolicitudDto {
@@ -47,4 +47,21 @@ export class CreateSolicitudDto {
   @IsOptional()
   @IsString()
   justification?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-12-01T00:00:00.000Z',
+    description: 'Fecha en que el solicitante necesita recibir el dato',
+  })
+  @IsOptional()
+  @IsDateString({}, { message: 'fechaRequerida debe ser ISO 8601' })
+  fechaRequerida?: string;
+
+  @ApiPropertyOptional({
+    example: 'Campos: saldo, dias_mora, garantia, fecha_corte',
+    description: 'Campos o variables de la data solicitada',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  camposRequeridos?: string;
 }

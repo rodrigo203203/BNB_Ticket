@@ -96,6 +96,23 @@ export const ALLOWED_STATUS_TRANSITIONS: Record<Role, Record<RequestStatus, Requ
   },
 };
 
+/**
+ * Regla RBAC: fecha de entrega la edita el analista asignado, coordinador y administrador.
+ */
+export function canEditFechaEntrega(
+  role: Role,
+  userId: string,
+  solicitud: { assignedAnalystId: string | null },
+): boolean {
+  if (role === Role.COORDINADOR || role === Role.ADMINISTRADOR) {
+    return true;
+  }
+  if (role === Role.ANALISTA && solicitud.assignedAnalystId === userId) {
+    return true;
+  }
+  return false;
+}
+
 export const AUTH_CONSTANTS = {
   COOKIE_NAME: 'bnb_session',
   CSRF_HEADER_NAME: 'x-csrf-token',

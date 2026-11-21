@@ -54,27 +54,29 @@ enum AuditAction {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
-  fullName       String
-  jobTitle       String?
-  avatarPath     String?
-  passwordHash   String
-  role           Role      @default(SOLICITANTE)
-  area           String    @default("Negocio")
-  isActive       Boolean   @default(true)
-  isLocked       Boolean   @default(false)
-  failedAttempts Int       @default(0)
-  lockedUntil    DateTime?
-  lastLoginAt    DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  fullName           String
+  jobTitle           String?
+  avatarPath         String?
+  passwordHash       String
+  role               Role      @default(SOLICITANTE)
+  area               String    @default("Negocio")
+  isActive           Boolean   @default(true)
+  isLocked           Boolean   @default(false)
+  failedAttempts     Int       @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   sessions             Session[]
   requestedSolicitudes Solicitud[]        @relation("RequestedSolicitudes")
   assignedSolicitudes  Solicitud[]        @relation("AssignedSolicitudes")
   solicitudHistories   SolicitudHistory[]
   auditLogs            AuditLog[]
+  adjuntosSubidos      SolicitudAdjunto[] @relation("AdjuntosSubidos")
 
   @@index([email])
   @@index([role])
@@ -114,6 +116,9 @@ model Solicitud {
   requesterArea     String
   justification     String?
   estimatedHours    Int?
+  fechaRequerida    DateTime?       @map("fecha_requerida")
+  fechaEntrega      DateTime?       @map("fecha_entrega")
+  camposRequeridos  String?         @map("campos_requeridos")
   closedAt          DateTime?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
@@ -121,6 +126,7 @@ model Solicitud {
   requester       User               @relation("RequestedSolicitudes", fields: [requesterId], references: [id])
   assignedAnalyst User?              @relation("AssignedSolicitudes", fields: [assignedAnalystId], references: [id])
   histories       SolicitudHistory[]
+  adjuntos        SolicitudAdjunto[]
 
   @@index([code])
   @@index([status])
@@ -128,6 +134,23 @@ model Solicitud {
   @@index([assignedAnalystId])
   @@index([createdAt])
   @@map("solicitudes")
+}
+
+model SolicitudAdjunto {
+  id           String   @id @default(uuid())
+  solicitudId  String   @map("solicitud_id")
+  storedPath   String   @map("stored_path")
+  originalName String   @map("original_name")
+  mimeType     String   @map("mime_type")
+  sizeBytes    Int      @map("size_bytes")
+  uploadedById String   @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  solicitud  Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  uploadedBy User      @relation("AdjuntosSubidos", fields: [uploadedById], references: [id])
+
+  @@index([solicitudId])
+  @@map("solicitud_adjuntos")
 }
 
 model SolicitudHistory {

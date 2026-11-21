@@ -12,6 +12,14 @@ export interface CreateSolicitudRequestDto {
   priority: RequestPriority;
   requesterArea?: string;
   justification?: string;
+  /** Fecha en que el solicitante necesita recibir el dato */
+  fechaRequerida?: string | null;
+  /** Descripción de los campos de data solicitados */
+  camposRequeridos?: string | null;
+}
+
+export interface UpdateFechaEntregaRequestDto {
+  fechaEntrega: string;
 }
 
 export interface UpdateSolicitudStatusRequestDto {
