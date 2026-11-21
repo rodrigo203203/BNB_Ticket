@@ -164,16 +164,19 @@ async function loadSolicitud() {
   }
 }
 
+const assignListScrollRef = ref<HTMLElement | null>(null);
+
 async function openAssignModal() {
   try {
     const res = await apiClient.get<any, any>('/users/assignable');
     assignableUsers.value = res.data || res || [];
-    selectedAnalystId.value = solicitud.value?.assignedAnalystId || (assignableUsers.value[0]?.id ?? '');
+    selectedAnalystId.value =
+      solicitud.value?.assignedAnalystId || (assignableUsers.value[0]?.id ?? '');
     assignComment.value = '';
     showAssignModal.value = true;
     await nextTick();
-    const lista = document.querySelector('.assign-list-scroll');
-    lista?.scrollTo(0, 0);
+    assignListScrollRef.value?.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    requestAnimationFrame(() => assignListScrollRef.value?.scrollTo(0, 0));
   } catch (err: any) {
     alert('Error al cargar analistas disponibles: ' + (err.response?.data?.message || err.message));
   }
@@ -516,7 +519,7 @@ onMounted(() => {
           <div class="assign-list">
             <label class="assign-list-label">Encargado responsable <span class="required">*</span></label>
             <p class="assign-orden-hint">Ordenado de menor a mayor carga</p>
-            <div class="assign-list-scroll">
+            <div ref="assignListScrollRef" class="assign-list-scroll">
             <label
               v-for="u in assignableUsers"
               :key="u.id"

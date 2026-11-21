@@ -2,6 +2,8 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   NivelCarga,
+  esSolicitudVencida,
+  RequestStatus,
   resumirCargaDesdeSolicitudes,
   Role,
   SolicitudCargaRow,
@@ -72,6 +74,7 @@ export class EquipoCargaService {
       personas: number;
       activasTotales: number;
       vencidasTotales: number;
+      vencidasSinAsignar: number;
       porVencerTotales: number;
     };
     personas: PersonaCargaDto[];
@@ -150,11 +153,35 @@ export class EquipoCargaService {
     const vencidasTotales = filas.reduce((a, f) => a + f.vencidas, 0);
     const porVencerTotales = filas.reduce((a, f) => a + f.porVencer, 0);
 
+    const activos = [
+      RequestStatus.REGISTRADA,
+      RequestStatus.EN_ANALISIS,
+      RequestStatus.EN_REVISION_COORDINACION,
+    ];
+    let vencidasSinAsignar = 0;
+    if (user.role !== Role.ANALISTA) {
+      const sinAsignar = await this.prisma.solicitud.findMany({
+        where: {
+          assignedAnalystId: null,
+          status: { in: activos },
+        },
+        select: { status: true, fechaRequerida: true, fechaEntrega: true },
+      });
+      vencidasSinAsignar = sinAsignar.filter((s) =>
+        esSolicitudVencida({
+          status: s.status as RequestStatus,
+          fechaRequerida: s.fechaRequerida,
+          fechaEntrega: s.fechaEntrega,
+        }),
+      ).length;
+    }
+
     return {
       resumen: {
         personas: filas.length,
         activasTotales,
         vencidasTotales,
+        vencidasSinAsignar,
         porVencerTotales,
       },
       personas: filas,

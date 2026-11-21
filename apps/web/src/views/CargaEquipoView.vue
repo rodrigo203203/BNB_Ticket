@@ -14,26 +14,27 @@ import {
   formatearFechaCalendarioLaPaz,
   NivelCarga,
 } from '@bnb/shared';
+import { filtrarPersonasCarga } from '../utils/carga-filtros.util';
 
 const authStore = useAuthStore();
 const data = ref<EquipoCargaResponse | null>(null);
 const loading = ref(true);
 const errorMessage = ref('');
 
-const filtroRol = ref<Role | ''>('');
-const filtroArea = ref('');
-const filtroNivel = ref<NivelCarga | ''>('');
+const filtroRol = ref<Role | null>(null);
+const filtroArea = ref<string | null>(null);
+const filtroNivel = ref<NivelCarga | null>(null);
 const ordenCarga = ref<'desc' | 'asc'>('desc');
 
 const opcionesRol = [
-  { label: 'Todos', value: '' as Role | '' },
+  { label: 'Todos', value: null as Role | null },
   { label: ROLE_LABELS[Role.ANALISTA], value: Role.ANALISTA },
   { label: ROLE_LABELS[Role.COORDINADOR], value: Role.COORDINADOR },
   { label: ROLE_LABELS[Role.ADMINISTRADOR], value: Role.ADMINISTRADOR },
 ];
 
 const opcionesNivel = [
-  { label: 'Todos los niveles', value: '' as NivelCarga | '' },
+  { label: 'Todos los niveles', value: null as NivelCarga | null },
   { label: 'Baja', value: 'baja' as NivelCarga },
   { label: 'Media', value: 'media' as NivelCarga },
   { label: 'Alta', value: 'alta' as NivelCarga },
@@ -68,16 +69,25 @@ const areasDisponibles = computed(() => {
   return Array.from(set).sort();
 });
 
+const opcionesArea = computed(() => [
+  { label: 'Todas', value: null as string | null },
+  ...areasDisponibles.value.map((a) => ({ label: a, value: a })),
+]);
+
 const personasFiltradas = computed(() => {
   if (!data.value) return [] as EquipoCargaPersonaRow[];
-  let filas = [...data.value.personas];
-  if (filtroRol.value) filas = filas.filter((p) => p.role === filtroRol.value);
-  if (filtroArea.value) filas = filas.filter((p) => p.area === filtroArea.value);
-  if (filtroNivel.value) filas = filas.filter((p) => p.nivel === filtroNivel.value);
-  filas.sort((a, b) =>
-    ordenCarga.value === 'desc' ? b.puntosCarga - a.puntosCarga : a.puntosCarga - b.puntosCarga,
-  );
-  return filas;
+  return filtrarPersonasCarga(data.value.personas, {
+    rol: filtroRol.value,
+    area: filtroArea.value,
+    nivel: filtroNivel.value,
+    orden: ordenCarga.value,
+  });
+});
+
+const notaVencidasSinAsignar = computed(() => {
+  const n = data.value?.resumen.vencidasSinAsignar ?? 0;
+  if (n <= 0) return '';
+  return `+${n} sin asignar`;
 });
 
 const estadosBarra = [
@@ -101,9 +111,9 @@ function nivelClass(nivel: string) {
 }
 
 function limpiarFiltros() {
-  filtroRol.value = '';
-  filtroArea.value = '';
-  filtroNivel.value = '';
+  filtroRol.value = null;
+  filtroArea.value = null;
+  filtroNivel.value = null;
   ordenCarga.value = 'desc';
 }
 </script>
@@ -143,8 +153,9 @@ function limpiarFiltros() {
             <span class="resumen-value">{{ data.resumen.activasTotales }}</span>
           </div>
           <div class="resumen-card warn">
-            <span class="resumen-label">Vencidas</span>
+            <span class="resumen-label">Vencidas (de encargados)</span>
             <span class="resumen-value text-vencida">{{ data.resumen.vencidasTotales }}</span>
+            <span v-if="notaVencidasSinAsignar" class="resumen-nota">{{ notaVencidasSinAsignar }}</span>
           </div>
           <div class="resumen-card info">
             <span class="resumen-label">Por vencer (3 días)</span>
@@ -160,6 +171,7 @@ function limpiarFiltros() {
               :options="opcionesRol"
               option-label="label"
               option-value="value"
+              placeholder="Todos"
               class="filtro-prime"
             />
           </label>
@@ -167,9 +179,10 @@ function limpiarFiltros() {
             <span>Área</span>
             <Select
               v-model="filtroArea"
-              :options="[{ label: 'Todas', value: '' }, ...areasDisponibles.map((a) => ({ label: a, value: a }))]"
+              :options="opcionesArea"
               option-label="label"
               option-value="value"
+              placeholder="Todas"
               class="filtro-prime"
             />
           </label>
@@ -180,6 +193,7 @@ function limpiarFiltros() {
               :options="opcionesNivel"
               option-label="label"
               option-value="value"
+              placeholder="Todos los niveles"
               class="filtro-prime"
             />
           </label>
@@ -360,6 +374,14 @@ function limpiarFiltros() {
 .resumen-value {
   font-size: 1.4rem;
   font-weight: 700;
+}
+
+.resumen-nota {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
 }
 
 .table-card {

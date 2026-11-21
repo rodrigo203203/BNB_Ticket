@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import MultiSelect from 'primevue/multiselect';
 import AppLayout from '../layouts/AppLayout.vue';
@@ -23,6 +23,7 @@ import {
 
 const router = useRouter();
 const authStore = useAuthStore();
+const ganttScrollRef = ref<HTMLElement | null>(null);
 const items = ref<SolicitudGanttItem[]>([]);
 const loading = ref(true);
 const errorMessage = ref('');
@@ -112,6 +113,25 @@ onMounted(() => {
 
 watch([filtroAnalistas, filtroAreas, filtroEstados], () => {
   void cargar();
+});
+
+function desplazarGanttCercaDeHoy() {
+  void nextTick(() => {
+    requestAnimationFrame(() => {
+      const scroll = ganttScrollRef.value;
+      if (!scroll || !lineaHoy.value) return;
+      const grid = scroll.querySelector('.gantt-grid') as HTMLElement | null;
+      const trackWidth = grid?.offsetWidth ?? scroll.scrollWidth;
+      const xHoy = (lineaHoy.value.x / 100) * trackWidth;
+      scroll.scrollLeft = Math.max(0, xHoy - scroll.clientWidth * 0.66);
+    });
+  });
+}
+
+watch([zoom, () => items.value.length, loading], () => {
+  if (!loading.value && items.value.length) {
+    desplazarGanttCercaDeHoy();
+  }
 });
 
 function msCreacion(s: SolicitudGanttItem): number {
@@ -449,7 +469,7 @@ const zoomHint = computed(() => {
       <div v-else-if="!items.length" class="empty-state">No hay solicitudes para mostrar en el Gantt.</div>
 
       <div v-else class="gantt-shell">
-        <div class="gantt-scroll">
+        <div ref="ganttScrollRef" class="gantt-scroll">
           <div class="gantt-grid" :style="{ minWidth: `${LEFT_LABEL_W + 720}px` }">
             <div class="gantt-row gantt-row-head">
               <div class="gantt-label-col head-col">
@@ -538,7 +558,7 @@ const zoomHint = computed(() => {
                     marcadorEdgeSide(s) === 'left' ? 'deadline-edge--left' : 'deadline-edge--right'
                   "
                   title="Fecha requerida fuera del rango"
-                  >{{ marcadorEdgeSide(s) === 'left' ? '→' : '←' }}</span
+                  >{{ marcadorEdgeSide(s) === 'left' ? '←' : '→' }}</span
                 >
               </div>
             </div>

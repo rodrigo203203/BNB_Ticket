@@ -124,7 +124,10 @@ export interface EquipoCargaResponse {
   resumen: {
     personas: number;
     activasTotales: number;
+  /** Vencidas en filas de encargados (B7). */
     vencidasTotales: number;
+    /** Activas sin asignar contadas con esSolicitudVencida (R3-7). */
+    vencidasSinAsignar?: number;
     porVencerTotales: number;
   };
   personas: EquipoCargaPersonaRow[];

@@ -8,6 +8,7 @@ import {
   RequestStatus,
   STATUS_LABELS,
   formatearFechaCalendarioLaPaz,
+  obtenerDiaCalendarioEnZona,
 } from '@bnb/shared';
 
 type PeriodoPreset = '7d' | '30d' | '90d' | 'custom';
@@ -179,11 +180,17 @@ const areasOpciones = computed(() => {
   return base;
 });
 
+/** R3-2: último día incluido en La Paz (evita fin de rango exclusivo en UTC). */
+function formatearDiaPeriodoInclusivo(iso: string): string {
+  const dia = obtenerDiaCalendarioEnZona(new Date(iso));
+  return formatearFechaCalendarioLaPaz(`${dia}T12:00:00.000Z`);
+}
+
 const subtituloPeriodo = computed(() => {
   const p = analisis.value?.periodo;
   if (!p) return 'Indicadores de plazo, carga y tendencias del período seleccionado.';
-  const desde = formatearFechaCalendarioLaPaz(p.desde);
-  const hasta = formatearFechaCalendarioLaPaz(p.hasta);
+  const desde = formatearDiaPeriodoInclusivo(p.desde);
+  const hasta = formatearDiaPeriodoInclusivo(p.hasta);
   return `Del ${desde} al ${hasta} · comparación con el período anterior equivalente.`;
 });
 
@@ -282,6 +289,12 @@ const chartTiempoRespuesta = computed(() => {
       },
     ],
   };
+});
+
+const alturaChartCargaPx = computed(() => {
+  const n = analisis.value?.cargaPorAnalista?.length ?? 0;
+  if (!n) return 220;
+  return Math.min(480, Math.max(160, n * 36 + 88));
 });
 
 const chartCargaAnalista = computed(() => {
@@ -590,7 +603,7 @@ const tarjetasKpi = computed(() => {
 
         <div v-if="chartCargaAnalista" class="chart-card chart-wide">
           <h3>Carga por analista</h3>
-          <div class="chart-box chart-box-carga">
+          <div class="chart-box chart-box-carga" :style="{ height: alturaChartCargaPx + 'px' }">
             <Chart
               :key="'carga-' + chartRenderKey"
               type="bar"
