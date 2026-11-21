@@ -122,6 +122,7 @@ export type ResumenCargaPersona = {
   porVencer: number;
   proximaFechaEntrega: string | null;
   proximaSolicitudCodigo: string | null;
+  proximaSolicitudId: string | null;
 };
 
 export function resumirCargaDesdeSolicitudes(
@@ -135,12 +136,14 @@ export function resumirCargaDesdeSolicitudes(
 
   let proximaFechaEntrega: string | null = null;
   let proximaSolicitudCodigo: string | null = null;
+  let proximaSolicitudId: string | null = null;
   for (const s of activas) {
     if (!s.fechaEntrega) continue;
     const iso = new Date(s.fechaEntrega).toISOString();
     if (!proximaFechaEntrega || iso < proximaFechaEntrega) {
       proximaFechaEntrega = iso;
       proximaSolicitudCodigo = s.code ?? null;
+      proximaSolicitudId = s.id ?? null;
     }
   }
 
@@ -153,5 +156,6 @@ export function resumirCargaDesdeSolicitudes(
     porVencer,
     proximaFechaEntrega,
     proximaSolicitudCodigo,
+    proximaSolicitudId,
   };
 }

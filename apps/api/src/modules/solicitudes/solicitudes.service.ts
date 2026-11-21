@@ -136,7 +136,7 @@ export class SolicitudesService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return items.map((item) => this.mapToItem(item));
+    return items.map((item: (typeof items)[number]) => this.mapToItem(item));
   }
 
   async findOne(id: string, user: UserSummary): Promise<SolicitudItem> {
@@ -411,7 +411,7 @@ export class SolicitudesService {
       orderBy: [{ fechaRequerida: 'asc' }, { createdAt: 'asc' }],
     });
 
-    return rows.map((r) => ({
+    return rows.map((r: (typeof rows)[number]) => ({
       id: r.id,
       code: r.code,
       title: r.title,

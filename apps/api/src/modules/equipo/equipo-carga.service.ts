@@ -22,15 +22,16 @@ export type PersonaCargaDto = {
   porVencer: number;
   proximaFechaEntrega: string | null;
   proximaSolicitudCodigo: string | null;
+  proximaSolicitudId: string | null;
 };
 
 @Injectable()
 export class EquipoCargaService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private assertPuedeVerCarga(user: UserSummary) {
-    if (user.role === Role.SOLICITANTE) {
-      throw new ForbiddenException('Los solicitantes no tienen acceso a la carga del equipo');
+  private assertPuedeVerCargaEquipo(user: UserSummary) {
+    if (user.role !== Role.COORDINADOR && user.role !== Role.ADMINISTRADOR) {
+      throw new ForbiddenException('Solo coordinador o administrador pueden ver la carga del equipo');
     }
   }
 
@@ -48,7 +49,7 @@ export class EquipoCargaService {
         assignedAnalystId: true,
       },
     });
-    const rows: SolicitudCargaRow[] = solicitudes.map((s) => ({
+    const rows: SolicitudCargaRow[] = solicitudes.map((s: (typeof solicitudes)[number]) => ({
       id: s.id,
       code: s.code,
       status: s.status as any,
@@ -69,13 +70,13 @@ export class EquipoCargaService {
     };
     personas: PersonaCargaDto[];
   }> {
-    this.assertPuedeVerCarga(user);
+    this.assertPuedeVerCargaEquipo(user);
 
     const rolesAsignables = [Role.ANALISTA, Role.COORDINADOR, Role.ADMINISTRADOR];
-    const whereUsers: any = { isActive: true, role: { in: rolesAsignables } };
-    if (user.role === Role.ANALISTA) {
-      whereUsers.id = user.id;
-    }
+    const whereUsers: { isActive: boolean; role: { in: Role[] } } = {
+      isActive: true,
+      role: { in: rolesAsignables },
+    };
 
     const personas = await this.prisma.user.findMany({
       where: whereUsers,
@@ -83,7 +84,7 @@ export class EquipoCargaService {
       orderBy: { fullName: 'asc' },
     });
 
-    const ids = personas.map((p) => p.id);
+    const ids = personas.map((p: (typeof personas)[number]) => p.id);
     const solicitudes = await this.prisma.solicitud.findMany({
       where: { assignedAnalystId: { in: ids } },
       select: {
@@ -112,7 +113,7 @@ export class EquipoCargaService {
       });
     }
 
-    const filas: PersonaCargaDto[] = personas.map((p) => {
+    const filas: PersonaCargaDto[] = personas.map((p: (typeof personas)[number]) => {
       const res = resumirCargaDesdeSolicitudes(porPersona.get(p.id) ?? []);
       return {
         id: p.id,
@@ -128,6 +129,7 @@ export class EquipoCargaService {
         porVencer: res.porVencer,
         proximaFechaEntrega: res.proximaFechaEntrega,
         proximaSolicitudCodigo: res.proximaSolicitudCodigo,
+        proximaSolicitudId: res.proximaSolicitudId,
       };
     });
 

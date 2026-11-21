@@ -28,7 +28,7 @@ Plataforma corporativa del BNB para registrar, asignar y dar trazabilidad a soli
   - `feat/adjuntos` — API y UI de adjuntos (PDF/XLSX/CSV/DOCX) en alta y detalle.
   - `feat/dashboard-analisis` — panel operativo con Chart.js, `/dashboard/analisis`, plazos compartidos.
   - `feat/gantt` — ruta `/gantt`, API `GET /solicitudes/gantt`, barras discontinuas sin fecha de entrega.
-  - `feat/dashboard-analisis` — panel operativo con Chart.js, `/dashboard/analisis`, plazos compartidos.
+  - `feat/carga-equipo` — vista `/equipo/carga`, `GET /equipo/carga`, asignación con motivo si carga ALTA.
 
 ## Estructura
 
@@ -70,8 +70,9 @@ rules/             Reglas de exclusión de contexto para agentes
 | 2026-11-21 | **fecha requerida** obligatoria al crear solicitud; debe ser día calendario **estrictamente posterior a hoy** en zona `America/La_Paz` (no fin de día UTC). Utilidad compartida `esFechaRequeridaPosteriorAHoy` en `@bnb/shared`. |
 | 2026-11-21 | UI T6: `NuevaSolicitudView` con PrimeVue DatePicker, campos requeridos y placeholder adjuntos (T7). Detalle: tarjeta “Fechas del requerimiento” y PATCH fecha entrega según RBAC. Ruta `/solicitudes/nueva` para cualquier rol autenticado. |
 | 2026-11-21 | **T7 adjuntos:** subida post-creación en nueva solicitud; panel en detalle (listar/descargar/eliminar en REGISTRADA). Almacenamiento en `storage/uploads/solicitudes/{id}/`. |
-| 2026-11-21 | **T8 análisis:** `GET /dashboard/analisis` (analista asignadas; coord/admin global; solicitante 403). `completadasMes` por `closedAt` en mes America/La_Paz; gráficos PrimeVue Chart + Chart.js. |
-| 2026-11-21 | **T8 análisis:** `GET /dashboard/analisis` (analista asignadas; coord/admin global; solicitante 403). `completadasMes` por `closedAt` en mes America/La_Paz; gráficos PrimeVue Chart + Chart.js. |
+| 2026-11-21 | **T8 análisis:** `GET /dashboard/analisis` (analista asignadas; coord/admin global; solicitante 403). Vencidas dashboard incluyen entregas tardías (`esSolicitudVencida`). |
+| 2026-11-21 | **T9 Gantt:** `/gantt` + `GET /solicitudes/gantt`; barras punteadas sin `fechaEntrega`. |
+| 2026-11-21 | **T9b carga equipo:** `/equipo/carga` + `GET /equipo/carga`; puntos prioridad (1–4), umbrales 10/20/21; vencida vista solo sin entrega; reasignación con motivo si carga ALTA. |
 
 ## Estado
 

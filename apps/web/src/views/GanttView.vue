@@ -12,8 +12,6 @@ const errorMessage = ref('');
 
 const DAY_MS = 86_400_000;
 const LEFT_LABEL_W = 220;
-const ROW_H = 44;
-const HEADER_H = 36;
 
 async function cargar() {
   loading.value = true;

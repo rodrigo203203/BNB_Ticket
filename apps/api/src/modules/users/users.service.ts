@@ -23,7 +23,6 @@ import {
   getUsersImportTemplateCsv,
   parseAndValidateUsersCsv,
 } from './csv-import.util';
-
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}

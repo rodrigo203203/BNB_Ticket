@@ -112,6 +112,7 @@ export interface EquipoCargaPersonaRow extends EncargadoConCarga {
   porVencer: number;
   proximaFechaEntrega: string | null;
   proximaSolicitudCodigo: string | null;
+  proximaSolicitudId: string | null;
 }
 
 export interface EquipoCargaResponse {
