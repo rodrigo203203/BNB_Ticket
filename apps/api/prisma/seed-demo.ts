@@ -317,7 +317,10 @@ async function main() {
         assignedAnalystId: analista1.id,
         requesterArea: 'Finanzas y Planificación',
         fechaRequerida: i % 2 === 0 ? diaUtc(y, m, Math.max(1, hoy.getUTCDate() - 10)) : diaUtc(y, m, hoy.getUTCDate() + 3),
-        fechaEntrega: i <= 1 ? null : diaUtc(y, m, Math.max(1, hoy.getUTCDate() - 1)),
+        /** 9100/9101/9103/9105 sin entrega (barra punteada hasta fecha requerida). */
+        fechaEntrega: [0, 1, 3, 5].includes(i)
+          ? null
+          : diaUtc(y, m, Math.max(1, hoy.getUTCDate() - 1)),
       },
     });
   }

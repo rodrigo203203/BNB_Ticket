@@ -168,8 +168,8 @@ function limpiarFiltros() {
           <button type="button" class="btn-limpiar" @click="limpiarFiltros">Limpiar filtros</button>
         </div>
 
-        <div class="table-card">
-          <table class="data-table">
+        <div class="table-card table-card--scroll">
+          <table class="data-table data-table--wide carga-table">
             <thead>
               <tr>
                 <th>Encargado</th>

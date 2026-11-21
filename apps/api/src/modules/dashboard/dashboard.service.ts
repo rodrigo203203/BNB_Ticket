@@ -44,10 +44,11 @@ export class DashboardService {
 
     const areasRows = await this.prisma.solicitud.findMany({
       where: whereRol,
-      distinct: ['requesterArea'],
       select: { requesterArea: true },
-      orderBy: { requesterArea: 'asc' },
     });
+    const areasDisponibles = [
+      ...new Set(areasRows.map((a) => a.requesterArea).filter(Boolean)),
+    ].sort((a, b) => a.localeCompare(b, 'es'));
 
     const rows = await this.prisma.solicitud.findMany({
       where: {
@@ -84,7 +85,7 @@ export class DashboardService {
 
     return {
       ...core,
-      areasDisponibles: areasRows.map((a) => a.requesterArea),
+      areasDisponibles,
     };
   }
 

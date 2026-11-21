@@ -90,14 +90,26 @@ async function cargar() {
       if (fechaDesde.value) params.from = fechaDesde.value;
       if (fechaHasta.value) params.to = fechaHasta.value;
     }
-    const res = await apiClient.get('/dashboard/analisis', { params });
+    const res = await apiClient.get('/dashboard/analisis', {
+      params,
+      skipGlobalErrorHandler: true,
+    } as any);
     analisis.value = unwrapPayload<DashboardAnalisisStats>(
       res as DashboardAnalisisStats | { data: DashboardAnalisisStats },
     );
   } catch (err: unknown) {
-    const e = err as { response?: { data?: { message?: string } }; message?: string };
-    errorMessage.value =
-      e.response?.data?.message || e.message || 'No se pudo cargar el análisis operativo';
+    const e = err as {
+      response?: { data?: { error?: { message?: string | string[] }; message?: string } };
+      message?: string;
+    };
+    const apiMsg = e.response?.data?.error?.message;
+    const flat =
+      typeof apiMsg === 'string'
+        ? apiMsg
+        : Array.isArray(apiMsg)
+          ? apiMsg.join(', ')
+          : e.response?.data?.message;
+    errorMessage.value = flat || e.message || 'No se pudo cargar el análisis operativo';
   } finally {
     loading.value = false;
   }

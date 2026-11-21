@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import MultiSelect from 'primevue/multiselect';
 import AppLayout from '../layouts/AppLayout.vue';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../stores/auth.store';
@@ -25,6 +26,11 @@ const ESTADOS_ACTIVOS_GANTT = [
   RequestStatus.EN_ANALISIS,
   RequestStatus.EN_REVISION_COORDINACION,
 ];
+
+const ESTADOS_FILTRO_OPCIONES = Object.values(RequestStatus).map((st) => ({
+  label: STATUS_LABELS[st],
+  value: st,
+}));
 
 const filtroAnalistas = ref<string[]>([]);
 const filtroAreas = ref<string[]>([]);
@@ -215,7 +221,9 @@ const ticks = computed(() => {
 /** Spark M8: sin entrega, barra punteada hasta fecha requerida (o hoy si faltara dato). */
 function finBarraMs(s: SolicitudGanttItem): number {
   if (s.fechaEntrega) {
-    return new Date(s.fechaEntrega).getTime();
+    const ent = new Date(s.fechaEntrega).getTime();
+    const cre = new Date(s.createdAt).getTime();
+    if (ent >= cre) return ent;
   }
   if (GANTT_FIN_BARRA_SIN_ENTREGA === 'fecha_requerida' && s.fechaRequerida) {
     return new Date(s.fechaRequerida).getTime();
@@ -235,13 +243,22 @@ function pctEnRango(t: number): number {
   return Math.min(Math.max(raw, 0), usable);
 }
 
+/** Barra recortada al rango visible: si la creación queda antes del zoom, arranca en el borde izquierdo. */
 function barStyle(s: SolicitudGanttItem) {
   if (!rango.value) return {};
+  const { min, max } = rango.value;
   const start = new Date(s.createdAt).getTime();
   const end = finBarraMs(s);
-  const leftPct = pctEnRango(start);
-  const endPct = pctEnRango(end);
-  const widthPct = Math.max(endPct - leftPct, 1.2);
+
+  const visStart = Math.max(start, min);
+  const visEnd = Math.min(end, max);
+  if (visEnd <= min) {
+    return { display: 'none' };
+  }
+
+  let leftPct = start < min ? 0 : pctEnRango(visStart);
+  const endPct = pctEnRango(visEnd);
+  const widthPct = Math.max(endPct - leftPct, s.sinFechaEntrega ? 1.8 : 1.2);
   return {
     left: `${leftPct}%`,
     width: `${widthPct}%`,
@@ -314,31 +331,44 @@ const zoomHint = computed(() => {
       </div>
 
       <div v-if="!loading" class="gantt-filtros">
-        <label class="filtro-gantt">
+        <div class="filtro-gantt">
           <span>Analista</span>
-          <select
+          <MultiSelect
             v-model="filtroAnalistas"
-            multiple
-            class="filtro-multi"
+            :options="opcionesAnalistas"
+            option-label="label"
+            option-value="id"
+            placeholder="Todos"
+            display="chip"
+            :max-selected-labels="2"
             :disabled="authStore.user?.role === Role.ANALISTA"
-          >
-            <option v-for="o in opcionesAnalistas" :key="o.id" :value="o.id">{{ o.label }}</option>
-          </select>
-        </label>
-        <label class="filtro-gantt">
+            class="filtro-multiselect"
+          />
+        </div>
+        <div class="filtro-gantt">
           <span>Área</span>
-          <select v-model="filtroAreas" multiple class="filtro-multi">
-            <option v-for="a in opcionesAreas" :key="a" :value="a">{{ a }}</option>
-          </select>
-        </label>
-        <label class="filtro-gantt">
+          <MultiSelect
+            v-model="filtroAreas"
+            :options="opcionesAreas"
+            placeholder="Todas"
+            display="chip"
+            :max-selected-labels="2"
+            class="filtro-multiselect"
+          />
+        </div>
+        <div class="filtro-gantt">
           <span>Estado</span>
-          <select v-model="filtroEstados" multiple class="filtro-multi">
-            <option v-for="st in Object.values(RequestStatus)" :key="st" :value="st">
-              {{ STATUS_LABELS[st] }}
-            </option>
-          </select>
-        </label>
+          <MultiSelect
+            v-model="filtroEstados"
+            :options="ESTADOS_FILTRO_OPCIONES"
+            option-label="label"
+            option-value="value"
+            placeholder="Activas"
+            display="chip"
+            :max-selected-labels="2"
+            class="filtro-multiselect"
+          />
+        </div>
       </div>
 
       <div v-if="loading" class="loading-state">
@@ -449,12 +479,14 @@ const zoomHint = computed(() => {
   min-width: 160px;
 }
 
-.filtro-multi {
-  min-height: 4.5rem;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  padding: 0.35rem;
-  font-size: 0.85rem;
+.filtro-multiselect {
+  width: 100%;
+  min-width: 180px;
+  max-width: 260px;
+}
+
+.filtro-multiselect :deep(.p-multiselect) {
+  width: 100%;
 }
 
 .gantt-header {

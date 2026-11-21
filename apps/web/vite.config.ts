@@ -11,7 +11,13 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['primevue/tag', 'primevue/chart', 'primevue/datepicker', 'primevue/button'],
+    include: [
+      'primevue/tag',
+      'primevue/chart',
+      'primevue/datepicker',
+      'primevue/button',
+      'primevue/multiselect',
+    ],
   },
   server: {
     port: 5173,

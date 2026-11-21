@@ -12,19 +12,47 @@ body {
   }
 
   .table-container,
-  .table-card,
+  .table-card:not(.table-card--scroll),
   .card-table {
     max-width: 100%;
     overflow-x: hidden;
   }
 
-  .data-table {
+  /* Carga del equipo y vistas wide: scroll horizontal, no aplastar columnas */
+  .table-card--scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .data-table:not(.data-table--wide) {
     table-layout: fixed;
     font-size: 0.78rem;
   }
 
-  .data-table th,
-  .data-table td {
+  .data-table--wide {
+    table-layout: auto !important;
+    min-width: 820px;
+    width: max-content;
+    font-size: 0.78rem;
+  }
+
+  .data-table--wide th,
+  .data-table--wide td {
+    word-wrap: normal;
+    overflow-wrap: normal;
+    white-space: nowrap;
+  }
+
+  .data-table--wide th:first-child,
+  .data-table--wide td:first-child {
+    white-space: normal;
+    min-width: 150px;
+    max-width: 200px;
+  }
+
+  .data-table:not(.data-table--wide) th,
+  .data-table:not(.data-table--wide) td {
     padding: 0.55rem 0.4rem;
     word-wrap: break-word;
     overflow-wrap: anywhere;
