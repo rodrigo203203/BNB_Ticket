@@ -132,15 +132,15 @@ Bitácora de seguridad para auditorías internas del banco:
 
 ```bash
 # Validar el esquema de Prisma sin conexión activa
-pnpm --filter @bnb/api prisma validate
+npm run prisma:validate
 
 # Generar el cliente TypeScript de Prisma (@prisma/client)
-pnpm --filter @bnb/api prisma generate
+npm run prisma:generate
 
 # Sincronizar el esquema con PostgreSQL local
-pnpm --filter @bnb/api prisma db push
+npm exec --workspace=@bnb/api prisma db push
 
 # Poblar la base de datos con usuarios y tickets de prueba
-pnpm seed
+npm run seed
 ```
 
