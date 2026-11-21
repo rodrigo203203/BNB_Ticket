@@ -81,7 +81,29 @@ export interface DashboardStatsSolicitante {
   enProceso: number;
   aprobadas: number;
   rechazadas: number;
+  canceladas: number;
   misSolicitudesRecientes: SolicitudItem[];
+}
+
+export interface DashboardAnalisisResumen {
+  activas: number;
+  vencidas: number;
+  porVencer: number;
+  completadasMes: number;
+  rechazadas: number;
+  canceladas: number;
+}
+
+export interface DashboardAnalisisStats {
+  resumen: DashboardAnalisisResumen;
+  porEstado: Record<RequestStatus, number>;
+  porCategoria: Record<RequestCategory, number>;
+  serieUltimosMeses: Array<{
+    mes: string;
+    completadas: number;
+    rechazadas: number;
+    canceladas: number;
+  }>;
 }
 
 export interface DashboardStatsAnalista {
