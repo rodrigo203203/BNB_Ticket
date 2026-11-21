@@ -53,6 +53,7 @@ Todos los endpoints están versionados bajo el prefijo `/api/v1/` y documentados
 | :--- | :--- | :--- | :--- |
 | `POST` | `/solicitudes` | Todos | Registra un nuevo requerimiento. Genera código consecutivo `REQ-YYYY-XXXX`. |
 | `GET` | `/solicitudes` | Todos | Lista solicitudes con filtros (`search`, `status`, `category`, `priority`). Los solicitantes solo ven sus propios tickets. |
+| `GET` | `/solicitudes/gantt` | Analista, Coord, Admin | Datos del diagrama Gantt (boceto 03). Analista solo asignadas; solicitante 403. Barras discontinuas sin `fechaEntrega`. Ruta front: `/gantt`. |
 | `GET` | `/solicitudes/:id` | Todos | Obtiene el detalle técnico y la bitácora completa de eventos de un ticket. |
 | `PATCH` | `/solicitudes/:id/status` | Analista, Coord, Admin | Actualiza el estado respetando la matriz de transiciones RBAC y registra el motivo en la bitácora. |
 | `PATCH` | `/solicitudes/:id/assign` | Coordinador, Admin | Asigna o reasigna el analista encargado (se rechaza a usuarios con rol `SOLICITANTE`). Promueve a `EN_ANALISIS` si estaba `REGISTRADA`. |

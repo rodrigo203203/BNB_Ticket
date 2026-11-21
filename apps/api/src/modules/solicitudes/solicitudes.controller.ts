@@ -59,6 +59,12 @@ export class SolicitudesController {
     return this.solicitudesService.findAll(user, query);
   }
 
+  @Get('gantt')
+  @ApiOperation({ summary: 'Datos del diagrama Gantt (sin rol SOLICITANTE)' })
+  async gantt(@CurrentUser() user: UserSummary) {
+    return this.solicitudesService.findForGantt(user);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtiene el detalle y bitácora de una solicitud' })
   async findOne(

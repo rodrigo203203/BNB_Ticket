@@ -44,6 +44,15 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/gantt',
+    name: 'Gantt',
+    component: () => import('../views/GanttView.vue'),
+    meta: {
+      requiresAuth: true,
+      roles: [Role.ANALISTA, Role.COORDINADOR, Role.ADMINISTRADOR],
+    },
+  },
+  {
     path: '/admin/users',
     name: 'UsersAdmin',
     component: () => import('../views/UsersAdminView.vue'),
