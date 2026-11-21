@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch, reactive } from 'vue';
+import {
+  deltaAutoscrollKanban,
+  estadoDegradadoKanban,
+  mascaraKanbanCss,
+} from '../utils/kanban-board-scroll.util';
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Dialog from 'primevue/dialog';
@@ -101,6 +106,32 @@ const pendingTicket = ref<SolicitudItem | null>(null);
 const pendingColumnKey = ref<string | null>(null);
 const pendingTargetStatus = ref<RequestStatus | null>(null);
 const statusChoices = ref<RequestStatus[]>([]);
+
+const boardRef = ref<HTMLElement | null>(null);
+const fadeState = ref(estadoDegradadoKanban(0, 0, 0));
+const boardMask = computed(() =>
+  mascaraKanbanCss(fadeState.value.degradadoIzquierda, fadeState.value.degradadoDerecha),
+);
+
+function syncBoardFade() {
+  const el = boardRef.value;
+  if (!el) return;
+  fadeState.value = estadoDegradadoKanban(el.scrollLeft, el.scrollWidth, el.clientWidth);
+}
+
+function onBoardAutoscroll(e: DragEvent) {
+  const el = boardRef.value;
+  if (!el) return;
+  const delta = deltaAutoscrollKanban(e.clientX, el.getBoundingClientRect());
+  if (delta !== 0) {
+    el.scrollLeft += delta;
+    syncBoardFade();
+  }
+}
+
+function onWindowResize() {
+  syncBoardFade();
+}
 
 const filteredTickets = computed(() => {
   return solicitudes.value.filter((t) => {
@@ -295,8 +326,18 @@ function goToDetail(id: string) {
   router.push(`/solicitudes/${id}`);
 }
 
+watch([loading, filteredTickets], () => {
+  requestAnimationFrame(() => syncBoardFade());
+});
+
 onMounted(() => {
   loadTickets();
+  requestAnimationFrame(() => syncBoardFade());
+  window.addEventListener('resize', onWindowResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onWindowResize);
 });
 </script>
 
@@ -342,17 +383,31 @@ onMounted(() => {
         </select>
       </div>
 
-      <div class="kanban-board">
-        <KanbanColumn
-          v-for="col in columns"
-          :key="col.key"
-          v-model="columnLists[col.key]"
-          :column="col"
-          :loading="loading"
-          :drag-enabled="dragEnabled && !statusUpdating"
-          @open-ticket="goToDetail"
-          @added="onCardAdded"
-        />
+      <div
+        class="kanban-board-shell"
+        :class="{
+          'kanban-board-shell--fade-start': fadeState.degradadoIzquierda,
+          'kanban-board-shell--fade-end': fadeState.degradadoDerecha,
+        }"
+      >
+        <div
+          ref="boardRef"
+          class="kanban-board"
+          :style="boardMask ? { WebkitMaskImage: boardMask, maskImage: boardMask } : undefined"
+          @scroll="syncBoardFade"
+          @dragover.prevent="onBoardAutoscroll"
+        >
+          <KanbanColumn
+            v-for="col in columns"
+            :key="col.key"
+            v-model="columnLists[col.key]"
+            :column="col"
+            :loading="loading"
+            :drag-enabled="dragEnabled && !statusUpdating"
+            @open-ticket="goToDetail"
+            @added="onCardAdded"
+          />
+        </div>
       </div>
     </div>
 
@@ -405,6 +460,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
 }
 
 .kanban-header {
@@ -414,6 +470,27 @@ onMounted(() => {
   margin-bottom: 1.25rem;
   flex-wrap: wrap;
   gap: 1rem;
+}
+
+/* 1024 px: misma fila título + acciones que en desktop (Spark R3). */
+@media (min-width: 769px) {
+  .kanban-header {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  .kanban-header > div:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .header-actions {
+    flex-shrink: 0;
+  }
+
+  .view-title {
+    font-size: clamp(1.15rem, 2.5vw, 1.5rem);
+  }
 }
 
 .title-row {
@@ -508,19 +585,73 @@ onMounted(() => {
   width: auto;
 }
 
+.kanban-board-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  max-height: calc(100dvh - 300px);
+  display: flex;
+  flex-direction: column;
+}
+
 .kanban-board {
   display: flex;
-  gap: 1rem;
-  overflow-x: hidden;
-  padding-bottom: 1.5rem;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
   align-items: flex-start;
   max-width: 100%;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #64748b #e2e8f0;
+}
+
+.kanban-board::-webkit-scrollbar {
+  height: 12px;
+}
+
+.kanban-board::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 6px;
+}
+
+.kanban-board::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 6px;
+  border: 2px solid #e2e8f0;
+}
+
+.kanban-board > :deep(.kanban-column) {
+  flex: 0 0 288px;
+  width: 288px;
+  min-width: 0;
 }
 
 @media (max-width: 768px) {
+  .kanban-board-shell {
+    max-height: none;
+    flex: none;
+  }
+
   .kanban-board {
     flex-direction: column;
     align-items: stretch;
+    overflow-x: visible;
+    overflow-y: visible;
+    scrollbar-gutter: auto;
+    padding-right: 0;
+    max-height: none;
+  }
+
+  .kanban-board > :deep(.kanban-column) {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 100%;
   }
 }
 

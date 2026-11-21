@@ -8,7 +8,9 @@ import { DashboardService } from '../src/modules/dashboard/dashboard.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { Role, UserSummary, RequestStatus } from '@bnb/shared';
 
-const runIntegration = Boolean(process.env.DATABASE_URL);
+import { hayBaseDeDatosParaTests } from './helpers/hay-base';
+
+const runIntegration = hayBaseDeDatosParaTests();
 
 (runIntegration ? describe : describe.skip)('dashboard analisis (integración DB)', () => {
   let dashboard: DashboardService;

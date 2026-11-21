@@ -1,8 +1,17 @@
+import '../src/config/cargar-entorno';
 import { PrismaClient, Role } from '@prisma/client';
+import { esContrasenaAceptableParaLogin, LONGITUD_MINIMA_CONTRASENA } from '@bnb/shared';
 import { hashPassword } from '../src/common/utils/argon2.util';
 import { randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();
+
+function debeMostrarContrasenasEnConsola(): boolean {
+  return (
+    process.argv.includes('--mostrar-contrasenas') ||
+    process.env.SEED_MOSTRAR_CONTRASENAS === '1'
+  );
+}
 
 function generarClaveSegura(): string {
   // 16 bytes → base64url (~22 caracteres) + sufijo para cumplir política mínima
@@ -25,6 +34,11 @@ async function main() {
   if (!password) {
     password = generarClaveSegura();
     mostrarUnaVez = true;
+  } else if (!esContrasenaAceptableParaLogin(password)) {
+    console.error(
+      `ADMIN_PASSWORD no cumple la política de login (mínimo ${LONGITUD_MINIMA_CONTRASENA} caracteres). Corrija .env sin mostrar la contraseña en consola.`,
+    );
+    process.exit(1);
   }
 
   const passwordHash = await hashPassword(password);
@@ -41,9 +55,13 @@ async function main() {
   });
 
   console.log(`✅ Administrador creado: ${email}`);
-  if (mostrarUnaVez) {
+  if (mostrarUnaVez && debeMostrarContrasenasEnConsola()) {
     console.log('⚠️  Contraseña inicial (mostrar solo esta vez, no se guarda en texto plano):');
     console.log(password);
+  } else if (mostrarUnaVez) {
+    console.log(
+      'Contraseña generada automáticamente (no se muestra). Defina ADMIN_PASSWORD en .env o use SEED_MOSTRAR_CONTRASENAS=1.',
+    );
   } else {
     console.log('Contraseña tomada de ADMIN_PASSWORD (no se muestra en consola).');
   }

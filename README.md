@@ -71,7 +71,9 @@ Plataforma corporativa bancaria para la centralización, asignación, trazabilid
 
 ## 👥 Cuentas de Prueba (Seed Sintético)
 
-En **desarrollo**, `npm run seed:demo` crea datos de prueba (contraseña vía `DEMO_SEED_PASSWORD` o generada en consola). En **producción**, use `npm run seed:admin` una sola vez (variables `ADMIN_EMAIL` / `ADMIN_PASSWORD`).
+En **desarrollo**, `npm run seed:demo` crea datos de prueba: defina `DEMO_SEED_PASSWORD` en `.env` o consulte la clave con `SEED_MOSTRAR_CONTRASENAS=1 npm run seed:demo` / `npm run seed:demo -- --mostrar-contrasenas` (por defecto no se imprime en consola). En **producción**, use `npm run seed:admin` una sola vez (variables `ADMIN_EMAIL` / `ADMIN_PASSWORD`; mismo criterio para mostrar contraseña generada).
+
+Scripts Bash (`build-package.sh`, `scripts/postgres/*`) cargan `.env` con `scripts/lib/cargar-env.sh` (sin `source`; seguro con espacios en valores). Pruebas: `npm run test:scripts`.
 
 | Rol | Correo | Nombre | Cargo (seed) | Área |
 | :--- | :--- | :--- | :--- | :--- |
@@ -104,9 +106,28 @@ En **desarrollo**, `npm run seed:demo` crea datos de prueba (contraseña vía `D
 Para despliegue **offline en Windows**, ver [docs/instalacion-offline.md](./docs/instalacion-offline.md).
 
 ### 1. Variables de Entorno
-Configurar `.env` con las credenciales de PostgreSQL:
+
+Copie `.env.example` a **`.env` en la raíz del monorepo** (recomendado). Opcionalmente puede usar `apps/api/.env` para overrides locales.
+
+**Precedencia:** primero variables del SO; luego `.env` de la raíz; por último `apps/api/.env` (gana en claves duplicadas, con `override: true`). El API y los seeds cargan esto vía `apps/api/src/config/cargar-entorno.ts` antes que Nest/Prisma.
+
+Ejemplo habitual en Windows (API en puerto **3005**):
+
 ```env
+PORT=3005
 DATABASE_URL=postgresql://usuario:password@localhost:5432/bnb_tickets_dev?schema=public
+# Opcional: forzar target del proxy Vite (si no, usa http://127.0.0.1:${PORT})
+# VITE_API_PROXY_TARGET=http://127.0.0.1:3005
+```
+
+El proxy de Vite (`/api`) lee el `.env` de la **raíz** (`envDir` en `vite.config.ts`), no un puerto fijo 3000.
+
+**Secretos JWT/cookies/CSRF:** en desarrollo pueden omitirse (el API avisa y usa valores por defecto inseguros). En producción son obligatorios. Genéreelos sin mostrarlos en consola:
+
+```bash
+npm run secretos:generar
+# o: scripts/generar-secretos.sh  |  scripts/generar-secretos.ps1
+# Regenerar todos: npm run secretos:generar -- --forzar
 ```
 
 ### 2. Base de Datos y Seed
@@ -122,7 +143,7 @@ npm run seed
 ```
 
 ### 3. Ejecutar en Modo Desarrollo
-Inicia frontend (puerto 5173) y backend (puerto 3000) en paralelo:
+Inicia frontend (puerto 5173) y backend (puerto definido en `PORT` del `.env`, p. ej. 3005) en paralelo:
 ```bash
 npm run dev
 ```
@@ -139,9 +160,15 @@ npm run typecheck
 # Pruebas unitarias completas
 npm run test
 
+# Integración API + Postgres (migrate + seed:demo + suites *.integration)
+# Requiere DATABASE_URL y DEMO_SEED_PASSWORD en .env — véase docs/pruebas-integracion.md
+npm run test:integration
+
 # Compilación completa de producción (shared, api, web)
 npm run build
 ```
+
+Las contraseñas de `seed:demo` y `seed:admin` **no se imprimen** por defecto; use `SEED_MOSTRAR_CONTRASENAS=1` o `--mostrar-contrasenas` solo en entornos controlados.
 
 ---
 

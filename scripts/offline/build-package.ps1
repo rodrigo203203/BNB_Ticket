@@ -30,6 +30,8 @@ Write-Host "Node detectado: $nodeVersion"
 
 Push-Location $RepoRoot
 try {
+  . (Join-Path $RepoRoot "scripts\Load-BnbDotEnv.ps1")
+
   if (-not (Test-Path "package-lock.json")) {
     throw "Falta package-lock.json. Ejecute 'npm install' en la raíz y commitee el lockfile."
   }
@@ -42,6 +44,10 @@ try {
     $env:DATABASE_URL = "postgresql://build:build@127.0.0.1:5432/bnb_build?schema=public"
     Write-Host "DATABASE_URL no definida; usando URL ficticia solo para validación/generate." -ForegroundColor DarkYellow
   }
+
+  $proxyKeys = @('HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy')
+  foreach ($k in $proxyKeys) { Remove-Item "Env:$k" -ErrorAction SilentlyContinue }
+  $env:PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING = '1'
 
   Write-Host "→ prisma validate + generate (binaryTargets native + windows)..." -ForegroundColor Yellow
   npm run prisma:validate
@@ -68,6 +74,10 @@ try {
     ".env.example",
     "scripts\offline",
     "scripts\postgres",
+    "scripts\generar-secretos.mjs",
+    "scripts\generar-secretos.sh",
+    "docs\instalacion-offline.md",
+    "docs\postgres.md",
     "storage"
   )
 

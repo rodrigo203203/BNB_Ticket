@@ -1,3 +1,5 @@
+import { validarYResolverSecretos } from './secretos-entorno.util';
+
 export interface AppConfig {
   nodeEnv: string;
   port: number;
@@ -24,7 +26,8 @@ export interface AppConfig {
   throttleAuthLimit: number;
 }
 
-export function validateEnvironment(config: Record<string, unknown>): AppConfig {
+/** Nest reemplaza la config validada: debemos conservar claves SCREAMING_SNAKE y camelCase. */
+function construirAppConfig(config: Record<string, unknown>): AppConfig {
   const nodeEnv = (config.NODE_ENV as string) || 'development';
   const port = parseInt((config.PORT as string) || '3000', 10);
   const apiPrefix = (config.API_PREFIX as string) || 'api/v1';
@@ -39,9 +42,10 @@ export function validateEnvironment(config: Record<string, unknown>): AppConfig 
         })()
       : 'postgresql://postgres:postgres@localhost:5432/bnb_tickets_dev?schema=public');
 
-  const jwtAccessSecret = (config.JWT_ACCESS_SECRET as string) || 'bnb_default_jwt_access_secret_for_dev_only_32_chars!';
-  const jwtRefreshSecret = (config.JWT_REFRESH_SECRET as string) || 'bnb_default_jwt_refresh_secret_for_dev_only_32_chars!';
-  const sessionCookieSecret = (config.SESSION_COOKIE_SECRET as string) || 'bnb_default_cookie_secret_for_dev_only_32_chars!';
+  const secretos = validarYResolverSecretos(config);
+  const jwtAccessSecret = secretos.JWT_ACCESS_SECRET;
+  const jwtRefreshSecret = secretos.JWT_REFRESH_SECRET;
+  const sessionCookieSecret = secretos.SESSION_COOKIE_SECRET;
 
   const jwtAccessExpiration = (config.JWT_ACCESS_EXPIRATION as string) || '15m';
   const jwtRefreshExpiration = (config.JWT_REFRESH_EXPIRATION as string) || '7d';
@@ -55,7 +59,7 @@ export function validateEnvironment(config: Record<string, unknown>): AppConfig 
   const cookieSameSite = ((config.COOKIE_SAME_SITE as string) || 'lax') as 'lax' | 'strict' | 'none';
   const cookieDomain = (config.COOKIE_DOMAIN as string) || 'localhost';
 
-  const csrfSecret = (config.CSRF_SECRET as string) || 'bnb_default_csrf_secret_key_minimum_32_chars!';
+  const csrfSecret = secretos.CSRF_SECRET;
   const corsOrigin = (config.CORS_ORIGIN as string) || 'http://localhost:5173';
 
   const throttleTtl = parseInt((config.THROTTLE_TTL as string) || '60', 10);
@@ -86,5 +90,50 @@ export function validateEnvironment(config: Record<string, unknown>): AppConfig 
     throttleTtl,
     throttleLimit,
     throttleAuthLimit,
+  };
+}
+
+function espejarClavesMayusculas(app: AppConfig): Record<string, string | boolean> {
+  return {
+    NODE_ENV: app.nodeEnv,
+    PORT: String(app.port),
+    DATABASE_URL: app.databaseUrl,
+    API_PREFIX: app.apiPrefix,
+    APP_NAME: app.appName,
+    APP_URL: app.appUrl,
+    JWT_ACCESS_SECRET: app.jwtAccessSecret,
+    JWT_REFRESH_SECRET: app.jwtRefreshSecret,
+    SESSION_COOKIE_SECRET: app.sessionCookieSecret,
+    CSRF_SECRET: app.csrfSecret,
+    JWT_ACCESS_EXPIRATION: app.jwtAccessExpiration,
+    JWT_REFRESH_EXPIRATION: app.jwtRefreshExpiration,
+    SESSION_TTL_HOURS: String(app.sessionTtlHours),
+    MAX_FAILED_LOGIN_ATTEMPTS: String(app.maxFailedAttempts),
+    LOCKOUT_DURATION_MINUTES: String(app.lockoutMinutes),
+    COOKIE_NAME: app.cookieName,
+    COOKIE_SECURE: app.cookieSecure ? 'true' : 'false',
+    COOKIE_SAME_SITE: app.cookieSameSite,
+    COOKIE_DOMAIN: app.cookieDomain,
+    CORS_ORIGIN: app.corsOrigin,
+    THROTTLE_TTL: String(app.throttleTtl),
+    THROTTLE_LIMIT: String(app.throttleLimit),
+    THROTTLE_AUTH_LIMIT: String(app.throttleAuthLimit),
+  };
+}
+
+/** Entrada original + AppConfig camelCase + espejo MAYÚSCULAS para ConfigService.get('DATABASE_URL'). */
+export function validateEnvironment(config: Record<string, unknown>): Record<string, unknown> {
+  const app = construirAppConfig(config);
+  const espejo = espejarClavesMayusculas(app);
+  const teniaDatabaseUrl =
+    typeof config.DATABASE_URL === 'string' && config.DATABASE_URL.trim().length > 0;
+  // No espejar un default de dev a DATABASE_URL: Nest puede propagarlo a process.env y activar Prisma/tests.
+  if (!teniaDatabaseUrl) {
+    delete espejo.DATABASE_URL;
+  }
+  return {
+    ...config,
+    ...app,
+    ...espejo,
   };
 }

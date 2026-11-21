@@ -7,12 +7,14 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from '../src/app.module';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 
-const runIntegration = Boolean(process.env.DATABASE_URL);
+import { contrasenaLoginIntegracion, hayBaseDeDatosParaTests } from './helpers/hay-base';
+
+const password = contrasenaLoginIntegracion();
+const runIntegration = hayBaseDeDatosParaTests() && Boolean(password);
 
 (runIntegration ? describe : describe.skip)('GET /equipo/carga (HTTP)', () => {
   let app: INestApplication;
   let baseUrl: string;
-  const password = process.env.DEMO_SEED_PASSWORD || 'DemoBNB2026!';
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -43,7 +45,7 @@ const runIntegration = Boolean(process.env.DATABASE_URL);
     const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password: password! }),
     });
     expect(res.status).toBe(200);
     const setCookie = res.headers.getSetCookie?.() ?? [];

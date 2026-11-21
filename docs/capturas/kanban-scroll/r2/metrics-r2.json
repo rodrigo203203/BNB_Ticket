@@ -1,0 +1,359 @@
+[
+  {
+    "archivo": "kanban-r2-inicio@1440",
+    "width": 1440,
+    "clientWidth": 1106,
+    "scrollWidth": 1504,
+    "scrollLeft": 0,
+    "maxScrollLeft": 398,
+    "columnWidths": [
+      288,
+      288,
+      288,
+      288,
+      288
+    ],
+    "columnasVisibles": 4,
+    "columnas": [
+      {
+        "width": 288,
+        "left": 0,
+        "visible": true,
+        "label": "Registradas"
+      },
+      {
+        "width": 288,
+        "left": 304,
+        "visible": true,
+        "label": "En Análisis"
+      },
+      {
+        "width": 288,
+        "left": 608,
+        "visible": true,
+        "label": "En Revisión"
+      },
+      {
+        "width": 288,
+        "left": 912,
+        "visible": true,
+        "label": "Aprobadas"
+      },
+      {
+        "width": 288,
+        "left": 1216,
+        "visible": false,
+        "label": "Rechazadas / Canceladas"
+      }
+    ],
+    "scrollbarEnVentana": true,
+    "boardBottom": 822,
+    "viewportHeight": 900
+  },
+  {
+    "archivo": "kanban-r2-final@1440",
+    "width": 1440,
+    "clientWidth": 1106,
+    "scrollWidth": 1504,
+    "scrollLeft": 388,
+    "maxScrollLeft": 398,
+    "columnWidths": [
+      288,
+      288,
+      288,
+      288,
+      288
+    ],
+    "columnasVisibles": 4,
+    "columnas": [
+      {
+        "width": 288,
+        "left": -388,
+        "visible": false,
+        "label": "Registradas"
+      },
+      {
+        "width": 288,
+        "left": -84,
+        "visible": true,
+        "label": "En Análisis"
+      },
+      {
+        "width": 288,
+        "left": 220,
+        "visible": true,
+        "label": "En Revisión"
+      },
+      {
+        "width": 288,
+        "left": 524,
+        "visible": true,
+        "label": "Aprobadas"
+      },
+      {
+        "width": 288,
+        "left": 828,
+        "visible": true,
+        "label": "Rechazadas / Canceladas"
+      }
+    ],
+    "scrollbarEnVentana": true,
+    "boardBottom": 822,
+    "viewportHeight": 900
+  },
+  {
+    "archivo": "kanban-r2-inicio@1024",
+    "width": 1024,
+    "clientWidth": 690,
+    "scrollWidth": 1504,
+    "scrollLeft": 0,
+    "maxScrollLeft": 814,
+    "columnWidths": [
+      288,
+      288,
+      288,
+      288,
+      288
+    ],
+    "columnasVisibles": 3,
+    "columnas": [
+      {
+        "width": 288,
+        "left": 0,
+        "visible": true,
+        "label": "Registradas"
+      },
+      {
+        "width": 288,
+        "left": 304,
+        "visible": true,
+        "label": "En Análisis"
+      },
+      {
+        "width": 288,
+        "left": 608,
+        "visible": true,
+        "label": "En Revisión"
+      },
+      {
+        "width": 288,
+        "left": 912,
+        "visible": false,
+        "label": "Aprobadas"
+      },
+      {
+        "width": 288,
+        "left": 1216,
+        "visible": false,
+        "label": "Rechazadas / Canceladas"
+      }
+    ],
+    "scrollbarEnVentana": true,
+    "boardBottom": 878,
+    "viewportHeight": 900
+  },
+  {
+    "archivo": "kanban-r2-final@1024",
+    "width": 1024,
+    "clientWidth": 690,
+    "scrollWidth": 1504,
+    "scrollLeft": 804,
+    "maxScrollLeft": 814,
+    "columnWidths": [
+      288,
+      288,
+      288,
+      288,
+      288
+    ],
+    "columnasVisibles": 3,
+    "columnas": [
+      {
+        "width": 288,
+        "left": -804,
+        "visible": false,
+        "label": "Registradas"
+      },
+      {
+        "width": 288,
+        "left": -500,
+        "visible": false,
+        "label": "En Análisis"
+      },
+      {
+        "width": 288,
+        "left": -196,
+        "visible": true,
+        "label": "En Revisión"
+      },
+      {
+        "width": 288,
+        "left": 108,
+        "visible": true,
+        "label": "Aprobadas"
+      },
+      {
+        "width": 288,
+        "left": 412,
+        "visible": true,
+        "label": "Rechazadas / Canceladas"
+      }
+    ],
+    "scrollbarEnVentana": true,
+    "boardBottom": 878,
+    "viewportHeight": 900
+  },
+  {
+    "archivo": "kanban-r2-arrastre@1440",
+    "width": 1440,
+    "clientWidth": 1106,
+    "scrollWidth": 1504,
+    "scrollLeft": 0,
+    "maxScrollLeft": 398,
+    "columnWidths": [
+      288,
+      288,
+      288,
+      288,
+      288
+    ],
+    "columnasVisibles": 4,
+    "columnas": [
+      {
+        "width": 288,
+        "left": 0,
+        "visible": true,
+        "label": "Registradas"
+      },
+      {
+        "width": 288,
+        "left": 304,
+        "visible": true,
+        "label": "En Análisis"
+      },
+      {
+        "width": 288,
+        "left": 608,
+        "visible": true,
+        "label": "En Revisión"
+      },
+      {
+        "width": 288,
+        "left": 912,
+        "visible": true,
+        "label": "Aprobadas"
+      },
+      {
+        "width": 288,
+        "left": 1216,
+        "visible": false,
+        "label": "Rechazadas / Canceladas"
+      }
+    ],
+    "scrollbarEnVentana": true,
+    "boardBottom": 822,
+    "viewportHeight": 900
+  },
+  {
+    "archivo": "kanban-r2@768",
+    "width": 768,
+    "clientWidth": 736,
+    "scrollWidth": 736,
+    "scrollLeft": 0,
+    "maxScrollLeft": 0,
+    "columnWidths": [
+      736,
+      736,
+      736,
+      736,
+      736
+    ],
+    "columnasVisibles": 5,
+    "columnas": [
+      {
+        "width": 736,
+        "left": 0,
+        "visible": true,
+        "label": "Registradas"
+      },
+      {
+        "width": 736,
+        "left": 0,
+        "visible": true,
+        "label": "En Análisis"
+      },
+      {
+        "width": 736,
+        "left": 0,
+        "visible": true,
+        "label": "En Revisión"
+      },
+      {
+        "width": 736,
+        "left": 0,
+        "visible": true,
+        "label": "Aprobadas"
+      },
+      {
+        "width": 736,
+        "left": 0,
+        "visible": true,
+        "label": "Rechazadas / Canceladas"
+      }
+    ],
+    "scrollbarEnVentana": false,
+    "boardBottom": 2637,
+    "viewportHeight": 900
+  },
+  {
+    "archivo": "kanban-r2@390",
+    "width": 390,
+    "clientWidth": 358,
+    "scrollWidth": 358,
+    "scrollLeft": 0,
+    "maxScrollLeft": 0,
+    "columnWidths": [
+      358,
+      358,
+      358,
+      358,
+      358
+    ],
+    "columnasVisibles": 5,
+    "columnas": [
+      {
+        "width": 358,
+        "left": 0,
+        "visible": true,
+        "label": "Registradas"
+      },
+      {
+        "width": 358,
+        "left": 0,
+        "visible": true,
+        "label": "En Análisis"
+      },
+      {
+        "width": 358,
+        "left": 0,
+        "visible": true,
+        "label": "En Revisión"
+      },
+      {
+        "width": 358,
+        "left": 0,
+        "visible": true,
+        "label": "Aprobadas"
+      },
+      {
+        "width": 358,
+        "left": 0,
+        "visible": true,
+        "label": "Rechazadas / Canceladas"
+      }
+    ],
+    "scrollbarEnVentana": false,
+    "boardBottom": 2761,
+    "viewportHeight": 844
+  }
+]

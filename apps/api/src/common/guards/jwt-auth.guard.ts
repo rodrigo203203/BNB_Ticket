@@ -13,6 +13,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { ALLOW_MUST_CHANGE_PASSWORD_KEY } from '../decorators/allow-must-change-password.decorator';
 import { mapUserToSummary } from '../utils/user-summary.util';
+import { obtenerJwtAccessSecret } from '../../config/secretos-entorno.util';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -53,7 +54,7 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      const secret = this.configService.get<string>('JWT_ACCESS_SECRET');
+      const secret = obtenerJwtAccessSecret(this.configService);
       const payload = await this.jwtService.verifyAsync(token, { secret });
 
       if (!payload || !payload.sub || !payload.sessionId) {

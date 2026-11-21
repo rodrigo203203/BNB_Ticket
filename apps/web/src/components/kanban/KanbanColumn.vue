@@ -49,6 +49,10 @@ const emit = defineEmits<{
         v-model="tickets"
         :group="{ name: 'kanban', pull: dragEnabled, put: dragEnabled }"
         :disabled="!dragEnabled"
+        :scroll="true"
+        :scroll-sensitivity="80"
+        :scroll-speed="12"
+        :bubble-scroll="true"
         item-key="id"
         class="column-cards"
         ghost-class="kanban-ghost"
@@ -84,17 +88,19 @@ const emit = defineEmits<{
   border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  min-height: 520px;
-  min-width: 270px;
-  flex: 1 1 270px;
-  max-width: 100%;
+  flex: 0 0 288px;
+  width: 288px;
+  min-width: 0;
+  max-height: 100%;
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 
 @media (max-width: 768px) {
   .kanban-column {
+    flex: 0 0 auto;
     min-width: 0;
     width: 100%;
+    max-height: none;
     min-height: auto;
   }
 }
@@ -118,12 +124,16 @@ const emit = defineEmits<{
   display: flex;
   align-items: flex-start;
   gap: 0.55rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .col-name {
   display: block;
   font-weight: 800;
   font-size: 0.9rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .col-sub {
@@ -131,6 +141,8 @@ const emit = defineEmits<{
   font-size: 0.72rem;
   opacity: 0.85;
   margin-top: 0.1rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .col-count {
@@ -151,9 +163,18 @@ const emit = defineEmits<{
 
 .column-body {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 0.65rem;
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .column-body {
+    overflow-y: visible;
+    min-height: auto;
+  }
 }
 
 .column-cards {
