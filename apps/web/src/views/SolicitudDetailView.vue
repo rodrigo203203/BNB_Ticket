@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import DatePicker from 'primevue/datepicker';
+import Button from 'primevue/button';
 import AppLayout from '../layouts/AppLayout.vue';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../stores/auth.store';
@@ -11,6 +13,9 @@ import {
   Role,
   RequestStatus,
   ALLOWED_STATUS_TRANSITIONS,
+  canEditFechaEntrega,
+  etiquetaEstadoPlazo,
+  fechaCalendarioToIso,
 } from '@bnb/shared';
 
 const route = useRoute();
@@ -37,6 +42,11 @@ const updatingStatus = ref(false);
 const newComment = ref('');
 const addingComment = ref(false);
 
+// Fechas del requerimiento (entrega editable según RBAC)
+const fechaEntregaEdit = ref<Date | null>(null);
+const savingFechaEntrega = ref(false);
+const fechaEntregaError = ref('');
+
 const isManager = computed(() => {
   return authStore.user?.role === Role.COORDINADOR || authStore.user?.role === Role.ADMINISTRADOR;
 });
@@ -48,6 +58,65 @@ const availableTransitions = computed(() => {
   if (!roleTransitions) return [];
   return roleTransitions[current] || [];
 });
+
+const puedeEditarFechaEntrega = computed(() => {
+  if (!solicitud.value || !authStore.user) return false;
+  return canEditFechaEntrega(authStore.user.role, authStore.user.id, {
+    assignedAnalystId: solicitud.value.assignedAnalystId,
+  });
+});
+
+const estadoPlazoLabel = computed(() => {
+  if (!solicitud.value?.fechaRequerida) return null;
+  return etiquetaEstadoPlazo(solicitud.value.fechaRequerida, solicitud.value.fechaEntrega);
+});
+
+const estadoPlazoEsAtraso = computed(() => estadoPlazoLabel.value === 'Atraso');
+
+function isoToDateLocal(iso: string | null): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatearSoloFecha(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('es-BO', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+watch(
+  () => solicitud.value?.fechaEntrega,
+  (iso) => {
+    fechaEntregaEdit.value = isoToDateLocal(iso ?? null);
+  },
+  { immediate: true },
+);
+
+async function guardarFechaEntrega() {
+  if (!solicitud.value || !fechaEntregaEdit.value) {
+    fechaEntregaError.value = 'Seleccione una fecha de entrega válida.';
+    return;
+  }
+
+  savingFechaEntrega.value = true;
+  fechaEntregaError.value = '';
+
+  try {
+    const res = await apiClient.patch<any, any>(`/solicitudes/${solicitud.value.id}/fecha-entrega`, {
+      fechaEntrega: fechaCalendarioToIso(fechaEntregaEdit.value),
+    });
+    solicitud.value = res.data || res;
+  } catch (err: any) {
+    fechaEntregaError.value =
+      err.response?.data?.message || err.message || 'No se pudo guardar la fecha de entrega';
+  } finally {
+    savingFechaEntrega.value = false;
+  }
+}
 
 async function loadSolicitud() {
   loading.value = true;
@@ -236,10 +305,75 @@ onMounted(() => {
               </div>
             </div>
 
+            <!-- Fechas del requerimiento (mockup 01 / T6) -->
+            <div class="content-box fechas-card">
+              <h3 class="box-title">
+                <font-awesome-icon icon="clock" />
+                <span>Fechas del requerimiento</span>
+              </h3>
+
+              <div class="fechas-grid">
+                <div class="fecha-item">
+                  <span class="fecha-label">Fecha de registro</span>
+                  <span class="fecha-value">{{ formatearSoloFecha(solicitud.createdAt) }}</span>
+                </div>
+
+                <div class="fecha-item">
+                  <span class="fecha-label">Fecha requerida</span>
+                  <span class="fecha-value fecha-value-purple">
+                    {{ formatearSoloFecha(solicitud.fechaRequerida) }}
+                  </span>
+                </div>
+
+                <div class="fecha-item fecha-item-entrega">
+                  <span class="fecha-label">Fecha de entrega</span>
+                  <template v-if="puedeEditarFechaEntrega">
+                    <DatePicker
+                      v-model="fechaEntregaEdit"
+                      date-format="dd/mm/yy"
+                      show-icon
+                      fluid
+                      placeholder="Fecha comprometida de entrega"
+                      input-class="fecha-picker-input"
+                    />
+                    <Button
+                      type="button"
+                      label="Guardar fecha"
+                      icon="pi pi-check"
+                      class="btn-guardar-fecha"
+                      :loading="savingFechaEntrega"
+                      :disabled="!fechaEntregaEdit"
+                      @click="guardarFechaEntrega"
+                    />
+                    <p v-if="fechaEntregaError" class="fecha-error">{{ fechaEntregaError }}</p>
+                  </template>
+                  <span v-else class="fecha-value">
+                    {{ formatearSoloFecha(solicitud.fechaEntrega) }}
+                    <small v-if="!solicitud.fechaEntrega" class="fecha-pendiente">Sin definir</small>
+                  </span>
+                </div>
+              </div>
+
+              <div v-if="solicitud.fechaRequerida && estadoPlazoLabel" class="plazo-status-row">
+                <span class="plazo-label">Estado de plazo:</span>
+                <span
+                  class="plazo-badge"
+                  :class="estadoPlazoEsAtraso ? 'plazo-atraso' : 'plazo-ok'"
+                >
+                  {{ estadoPlazoLabel }}
+                </span>
+              </div>
+            </div>
+
             <!-- Tarjeta de Alcance y Descripción -->
             <div class="content-box">
               <h3 class="box-title">Descripción y Requerimiento Técnico</h3>
               <p class="description-text">{{ solicitud.description }}</p>
+            </div>
+
+            <div v-if="solicitud.camposRequeridos" class="content-box campos-box">
+              <h3 class="box-title">Campos o variables solicitadas</h3>
+              <p class="description-text">{{ solicitud.camposRequeridos }}</p>
             </div>
 
             <!-- Justificación si existe -->
@@ -626,6 +760,111 @@ onMounted(() => {
   border-left: 4px solid var(--bnb-purple);
 }
 
+.fechas-card {
+  border-left: 4px solid var(--bnb-green);
+}
+
+.campos-box {
+  border-left: 4px solid #94a3b8;
+}
+
+.fechas-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.fecha-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.fecha-item-entrega {
+  min-width: 0;
+}
+
+.fecha-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.03em;
+}
+
+.fecha-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.fecha-value-purple {
+  color: var(--bnb-purple);
+}
+
+.fecha-pendiente {
+  display: block;
+  font-weight: 500;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  margin-top: 0.15rem;
+}
+
+.fecha-error {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: #b91c1c;
+}
+
+:deep(.fecha-picker-input) {
+  width: 100%;
+  border-radius: 8px;
+}
+
+:deep(.btn-guardar-fecha.p-button) {
+  margin-top: 0.5rem;
+  background: var(--bnb-purple);
+  border-color: var(--bnb-purple);
+  font-size: 0.85rem;
+}
+
+:deep(.btn-guardar-fecha.p-button:not(:disabled):hover) {
+  background: var(--bnb-purple-hover);
+  border-color: var(--bnb-purple-hover);
+}
+
+.plazo-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.plazo-label {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.plazo-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+}
+
+.plazo-ok {
+  background: var(--bnb-green-light);
+  color: #15803d;
+}
+
+.plazo-atraso {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .box-title {
   font-size: 1rem;
   font-weight: 700;
@@ -921,6 +1160,9 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
   .cards-duo {
+    grid-template-columns: 1fr;
+  }
+  .fechas-grid {
     grid-template-columns: 1fr;
   }
 }
