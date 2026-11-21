@@ -171,18 +171,9 @@ const rango = computed(() => {
       min = max - 14 * DAY_MS;
     }
   } else if (zoom.value === 'week') {
+    /** Semana fija que siempre incluye hoy; barras antiguas/futuras se recortan al borde. */
     min = inicioSemanaCalendarioLaPaz(hoy);
     max = min + 7 * DAY_MS;
-    if (dataMin < min) {
-      min = inicioSemanaCalendarioLaPaz(dataMin);
-    }
-    if (dataMax > max) {
-      max = instanteCalendarioLaPaz(new Date(dataMax)) + DAY_MS;
-    }
-    if (hoy < min || hoy >= max) {
-      min = inicioSemanaCalendarioLaPaz(hoy);
-      max = min + 7 * DAY_MS;
-    }
   } else {
     min = inicioMesCalendarioLaPaz(hoy);
     max = finMesCalendarioLaPaz(hoy);
@@ -220,10 +211,12 @@ const ticks = computed(() => {
   }
 
   if (zoom.value === 'week') {
-    for (let i = 0; i <= 6; i++) {
+    const dias = Math.min(7, Math.ceil(span / DAY_MS));
+    for (let i = 0; i < dias; i++) {
       const t = min + i * DAY_MS;
+      if (t > max) break;
       out.push({
-        x: (i / 6) * 100,
+        x: ((t - min) / span) * 100,
         label: etiquetaEjeLaPaz(t, 'dayWeek'),
       });
     }
