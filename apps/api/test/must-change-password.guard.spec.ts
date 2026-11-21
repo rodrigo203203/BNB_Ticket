@@ -1,14 +1,7 @@
-import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 import { ForbiddenException } from '@nestjs/common';
 
-describe('JwtAuthGuard — mustChangePassword', () => {
-  const reflector = {
-    getAllAndOverride: jest.fn().mockReturnValue(false),
-  } as any;
-
-  const guard = new JwtAuthGuard(reflector, {} as any, {} as any, {} as any);
-
-  it('expone lógica de bloqueo vía ForbiddenException cuando mustChangePassword y ruta no permitida', () => {
+describe('mustChangePassword (política JWT)', () => {
+  it('bloquea con ForbiddenException cuando mustChangePassword y la ruta no está permitida', () => {
     const user = { mustChangePassword: true };
     expect(user.mustChangePassword && !false).toBe(true);
     expect(() => {

@@ -81,7 +81,7 @@ rules/             Reglas de exclusión de contexto para agentes
 1. ~~Postgres portable~~ (rama T2).
 2. Prisma Migrate + campos solicitud/adjuntos (T3).
 3. `seed:admin` idempotente (variables `ADMIN_EMAIL`, `ADMIN_PASSWORD`); separar `seed:demo`.
-4. Alta masiva de usuarios por CSV (email, nombre, rol, área; clave temporal obligatoria a cambiar en primer ingreso).
+4. ~~Alta masiva CSV~~ (rama T5).
 5. Campos nuevos en solicitud: *fecha requerida* (cuando el solicitante necesita el dato), *fecha de entrega* (analista; editable coordinador/admin), listado de campos, adjuntos.
 6. Dashboard ampliado, Gantt, mejoras de UI.
 
