@@ -9,16 +9,17 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { obtenerSessionCookieSecret } from './config/secretos-entorno.util';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT', 3000);
-  const apiPrefix = configService.get<string>('API_PREFIX', 'api/v1');
-  const corsOrigin = configService.get<string>('CORS_ORIGIN', 'http://localhost:5173');
-  const cookieSecret = configService.get<string>('SESSION_COOKIE_SECRET', 'bnb_cookie_secret_long_32_chars');
+  const port = configService.get<number>('port', 3000);
+  const apiPrefix = configService.get<string>('apiPrefix', 'api/v1');
+  const corsOrigin = configService.get<string>('corsOrigin', 'http://localhost:5173');
+  const cookieSecret = obtenerSessionCookieSecret(configService);
 
   // 1. Seguridad con Helmet
   app.use(

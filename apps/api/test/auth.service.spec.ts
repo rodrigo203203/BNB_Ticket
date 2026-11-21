@@ -32,16 +32,19 @@ describe('AuthService (Argon2id + Lockout + Sesiones)', () => {
       signAsync: jest.fn().mockResolvedValue('mocked_jwt_access_token'),
     };
 
+    const valores: Record<string, unknown> = {
+      MAX_FAILED_LOGIN_ATTEMPTS: 5,
+      LOCKOUT_DURATION_MINUTES: 15,
+      SESSION_TTL_HOURS: 168,
+      jwtAccessSecret: 'test_secret_32_characters_long_key',
+      jwtAccessExpiration: '15m',
+    };
     mockConfigService = {
-      get: jest.fn((key: string, defaultVal: any) => {
-        const config: Record<string, any> = {
-          MAX_FAILED_LOGIN_ATTEMPTS: 5,
-          LOCKOUT_DURATION_MINUTES: 15,
-          SESSION_TTL_HOURS: 168,
-          JWT_ACCESS_SECRET: 'test_secret_32_characters_long_key',
-          JWT_ACCESS_EXPIRATION: '15m',
-        };
-        return config[key] ?? defaultVal;
+      get: jest.fn((key: string, defaultVal: unknown) => valores[key] ?? defaultVal),
+      getOrThrow: jest.fn((key: string) => {
+        const v = valores[key];
+        if (v === undefined) throw new Error(`Missing config ${key}`);
+        return v;
       }),
     };
 

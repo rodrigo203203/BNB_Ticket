@@ -120,6 +120,14 @@ DATABASE_URL=postgresql://usuario:password@localhost:5432/bnb_tickets_dev?schema
 
 El proxy de Vite (`/api`) lee el `.env` de la **raíz** (`envDir` en `vite.config.ts`), no un puerto fijo 3000.
 
+**Secretos JWT/cookies/CSRF:** en desarrollo pueden omitirse (el API avisa y usa valores por defecto inseguros). En producción son obligatorios. Genéreelos sin mostrarlos en consola:
+
+```bash
+npm run secretos:generar
+# o: scripts/generar-secretos.sh  |  scripts/generar-secretos.ps1
+# Regenerar todos: npm run secretos:generar -- --forzar
+```
+
 ### 2. Base de Datos y Seed
 ```bash
 # Instalar dependencias (primera vez o tras cambios en lockfile)

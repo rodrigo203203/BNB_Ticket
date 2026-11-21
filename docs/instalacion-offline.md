@@ -51,7 +51,7 @@ Si en el futuro se reduce el tamaño del paquete, habrá que usar `npm ci --omit
      -ManifestPath "D:\Paquetes\manifest-20261120-120000.json" `
      -InstallDir "D:\Aplicaciones\BNB_Tickets"
    ```
-3. Editar `.env` en la **raíz** (y opcionalmente `apps/api/.env` para overrides). Precedencia: SO → raíz → `apps/api/.env`. No commitear secretos.
+3. Editar `.env` en la **raíz** (y opcionalmente `apps/api/.env` para overrides). Precedencia: SO → raíz → `apps/api/.env`. No commitear secretos. En producción defina `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `SESSION_COOKIE_SECRET` y `CSRF_SECRET` (o ejecute `npm run secretos:generar` una vez en el servidor).
 4. **PostgreSQL**: ver [postgres.md](./postgres.md). Modo **portable** (típico offline): `initdb.ps1` → `start.ps1` → `create-db.ps1`. Modo **service**: omitir `initdb.ps1`; use `start.ps1` (arranca el servicio). Antes del API, PostgreSQL debe estar en ejecución.
 5. Arrancar API:
    ```powershell

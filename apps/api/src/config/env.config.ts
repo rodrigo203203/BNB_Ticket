@@ -1,3 +1,5 @@
+import { validarYResolverSecretos } from './secretos-entorno.util';
+
 export interface AppConfig {
   nodeEnv: string;
   port: number;
@@ -39,9 +41,10 @@ export function validateEnvironment(config: Record<string, unknown>): AppConfig 
         })()
       : 'postgresql://postgres:postgres@localhost:5432/bnb_tickets_dev?schema=public');
 
-  const jwtAccessSecret = (config.JWT_ACCESS_SECRET as string) || 'bnb_default_jwt_access_secret_for_dev_only_32_chars!';
-  const jwtRefreshSecret = (config.JWT_REFRESH_SECRET as string) || 'bnb_default_jwt_refresh_secret_for_dev_only_32_chars!';
-  const sessionCookieSecret = (config.SESSION_COOKIE_SECRET as string) || 'bnb_default_cookie_secret_for_dev_only_32_chars!';
+  const secretos = validarYResolverSecretos(config);
+  const jwtAccessSecret = secretos.JWT_ACCESS_SECRET;
+  const jwtRefreshSecret = secretos.JWT_REFRESH_SECRET;
+  const sessionCookieSecret = secretos.SESSION_COOKIE_SECRET;
 
   const jwtAccessExpiration = (config.JWT_ACCESS_EXPIRATION as string) || '15m';
   const jwtRefreshExpiration = (config.JWT_REFRESH_EXPIRATION as string) || '7d';
@@ -55,7 +58,7 @@ export function validateEnvironment(config: Record<string, unknown>): AppConfig 
   const cookieSameSite = ((config.COOKIE_SAME_SITE as string) || 'lax') as 'lax' | 'strict' | 'none';
   const cookieDomain = (config.COOKIE_DOMAIN as string) || 'localhost';
 
-  const csrfSecret = (config.CSRF_SECRET as string) || 'bnb_default_csrf_secret_key_minimum_32_chars!';
+  const csrfSecret = secretos.CSRF_SECRET;
   const corsOrigin = (config.CORS_ORIGIN as string) || 'http://localhost:5173';
 
   const throttleTtl = parseInt((config.THROTTLE_TTL as string) || '60', 10);

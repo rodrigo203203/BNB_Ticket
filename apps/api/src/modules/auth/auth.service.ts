@@ -17,6 +17,7 @@ import * as path from 'path';
 import { mapUserToSummary } from '../../common/utils/user-summary.util';
 import { validateAvatarBuffer } from '../../common/utils/avatar-file.util';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { obtenerJwtAccessSecret } from '../../config/secretos-entorno.util';
 
 @Injectable()
 export class AuthService {
@@ -170,8 +171,8 @@ export class AuthService {
     };
 
     const accessToken = await this.jwtService.signAsync(jwtPayload, {
-      secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRATION', '15m'),
+      secret: obtenerJwtAccessSecret(this.configService),
+      expiresIn: this.configService.get<string>('jwtAccessExpiration', '15m'),
     });
 
     const csrfToken = this.generateCsrfToken();
