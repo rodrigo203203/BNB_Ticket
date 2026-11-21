@@ -172,6 +172,7 @@ function limpiarFiltros() {
               option-label="label"
               option-value="value"
               placeholder="Todos"
+              append-to="body"
               class="filtro-prime"
             />
           </label>
@@ -183,6 +184,7 @@ function limpiarFiltros() {
               option-label="label"
               option-value="value"
               placeholder="Todas"
+              append-to="body"
               class="filtro-prime"
             />
           </label>
@@ -194,6 +196,7 @@ function limpiarFiltros() {
               option-label="label"
               option-value="value"
               placeholder="Todos los niveles"
+              append-to="body"
               class="filtro-prime"
             />
           </label>
@@ -204,6 +207,7 @@ function limpiarFiltros() {
               :options="opcionesOrden"
               option-label="label"
               option-value="value"
+              append-to="body"
               class="filtro-prime"
             />
           </label>

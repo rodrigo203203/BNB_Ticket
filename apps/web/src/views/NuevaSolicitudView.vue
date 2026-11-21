@@ -276,6 +276,7 @@ async function handleSubmit() {
                 date-format="dd/mm/yy"
                 show-icon
                 fluid
+                append-to="body"
                 placeholder="Seleccione día posterior a hoy"
                 input-class="form-control-datepicker"
               />

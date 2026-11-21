@@ -17,6 +17,7 @@ export default defineConfig({
       'primevue/datepicker',
       'primevue/button',
       'primevue/multiselect',
+      'primevue/select',
     ],
   },
   server: {

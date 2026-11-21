@@ -1,0 +1,67 @@
+/**
+ * Paneles flotantes PrimeVue (Aura) — fondo opaco, borde y sombra con respaldo BNB.
+ * Aplica a overlays en body (Select, MultiSelect, DatePicker, Dialog).
+ */
+
+/* !important: el CSS inyectado por chunks lazy usa variables aún vacías en el primer paint */
+body > .p-select-overlay,
+body > .p-multiselect-overlay,
+.p-select-overlay,
+.p-multiselect-overlay,
+.p-datepicker-panel,
+.p-dialog,
+.p-connected-overlay-enter-active,
+.p-connected-overlay {
+  background-color: var(--p-content-background, #ffffff) !important;
+  color: var(--p-text-color, #334155) !important;
+  border: 1px solid var(--p-content-border-color, #e2e8f0) !important;
+  border-radius: var(--p-content-border-radius, 6px) !important;
+  box-shadow:
+    0 4px 6px -1px rgb(15 23 42 / 0.1),
+    0 2px 4px -2px rgb(15 23 42 / 0.08) !important;
+  z-index: 1100 !important;
+  opacity: 1 !important;
+}
+
+/* PrimeVue deja opacity:0 si la transición de entrada no completa (p. ej. capturas/playwright) */
+.p-select-overlay-enter-active,
+.p-select-overlay-enter-to,
+.p-multiselect-overlay-enter-active,
+.p-multiselect-overlay-enter-to,
+.p-datepicker-panel-enter-active,
+.p-datepicker-panel-enter-to {
+  opacity: 1 !important;
+}
+
+.p-select-overlay,
+.p-multiselect-overlay {
+  overflow: hidden;
+}
+
+.p-select-list-container,
+.p-multiselect-list-container,
+.p-select-list,
+.p-multiselect-list {
+  background: inherit;
+}
+
+.p-select-option:not(.p-disabled),
+.p-multiselect-option:not(.p-disabled) {
+  border-radius: var(--p-content-border-radius, 4px);
+}
+
+.p-select-option:not(.p-disabled):hover,
+.p-multiselect-option:not(.p-disabled):hover {
+  background: var(--p-content-hover-background, #f1f5f9);
+}
+
+.p-select-option.p-select-option-selected,
+.p-multiselect-option.p-multiselect-option-selected {
+  background: var(--p-highlight-background, #ecfdf3);
+  color: var(--p-highlight-color, #154e2e);
+}
+
+.p-select-option.p-focus,
+.p-multiselect-option.p-focus {
+  background: var(--p-content-hover-background, #f1f5f9);
+}

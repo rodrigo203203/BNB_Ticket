@@ -429,6 +429,7 @@ const zoomHint = computed(() => {
             display="chip"
             :max-selected-labels="2"
             :disabled="authStore.user?.role === Role.ANALISTA"
+            append-to="body"
             class="filtro-multiselect"
           />
         </div>
@@ -440,6 +441,7 @@ const zoomHint = computed(() => {
             placeholder="Todas"
             display="chip"
             :max-selected-labels="2"
+            append-to="body"
             class="filtro-multiselect"
           />
         </div>
@@ -454,6 +456,7 @@ const zoomHint = computed(() => {
             display="chip"
             :max-selected-labels="2"
             selected-items-label="{0} estados"
+            append-to="body"
             class="filtro-multiselect"
           />
         </div>

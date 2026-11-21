@@ -367,6 +367,7 @@ onMounted(() => {
                       date-format="dd/mm/yy"
                       show-icon
                       fluid
+                      append-to="body"
                       placeholder="dd/mm/aaaa"
                       input-class="fecha-picker-input"
                     />
